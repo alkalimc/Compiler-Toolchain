@@ -1,12 +1,12 @@
 # powered by alkali
 # Copyright 2024- alkali. All Rights Reserved.
 
-from dataclasses import field
+from dataclasses import dataclass, field
 import os
-from typing import Optional, Union
 from datasets import load_dataset
 from gptqmodel import GPTQModel, QuantizeConfig
 
+@dataclass
 class quantize():
     workspace: str = field(default=f"/data/disk0/Workspace/{os.getlogin()}")
 
@@ -28,15 +28,15 @@ class quantize():
     quantize_path: str = field(default=f"{workspace}/Models/Quanted/{model_id}-W{quantize_bits}A16-gptq")
     quantize_batch_size: int = field(default=16, metadata={"min_value": 1})
 
-    quantize_config: QuantizeConfig = field(default=QuantizeConfig(quantize_bits, quantize_group_size, quantize_desc_act, quantize_sym, quantize_v2))
+    def __post_init__(self):
+        quantize_config = QuantizeConfig(self.quantize_bits, self.quantize_group_size, self.quantize_desc_act, self.quantize_sym, self.quantize_v2)
 
-    data_calibration_dataset: load_dataset = field(default=load_dataset(
-        data_path,
-        data_files,
-        data_split
-      ).select(range(data_range))[data_tag])
+        data_calibration_dataset: load_dataset = field(default=load_dataset(
+            self.data_path,
+            self.data_files,
+            self.data_split
+          ).select(range(self.data_range))[self.data_tag])
     
-    model: GPTQModel.load = field(default=GPTQModel.load(model_path, quantize_config))
-    
-    model.quantize(data_calibration_dataset, quantize_batch_size)
-    model.save(quantize_path)
+        model = GPTQModel.load(self.model_path, quantize_config)
+        model.quantize(data_calibration_dataset, self.quantize_batch_size)
+        model.save(self.quantize_path)
