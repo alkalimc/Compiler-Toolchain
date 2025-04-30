@@ -8,7 +8,8 @@ from gptqmodel.utils.eval import EVAL
 
 @dataclass
 class EvalPlus():
-    workspace: str = field(default=f"/data/disk0/Workspace/{os.getlogin()}")
+    username: str = field(default="Compiler-Toolchain")
+    workspace: str = field(default=f"/data/disk0/Workspace/{username}")
 
     model_id: str = field(default="Qwen2.5-7B-Instruct")
     model_path: str = field(default=f"{workspace}/Models/{model_id}")

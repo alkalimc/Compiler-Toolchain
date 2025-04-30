@@ -7,8 +7,9 @@ from datasets import load_dataset
 from gptqmodel import GPTQModel, QuantizeConfig
 
 @dataclass
-class Quantize():
-    workspace: str = field(default=f"/data/disk0/Workspace/{os.getlogin()}")
+class Quantification():
+    username: str = field(default="Compiler-Toolchain")
+    workspace: str = field(default=f"/data/disk0/Workspace/{username}")
 
     model_id: str = field(default="Qwen2.5-7B-Instruct")
     model_path: str = field(default=f"{workspace}/Models/{model_id}")
@@ -20,7 +21,12 @@ class Quantize():
     data_range: int = field(default=1024)
     data_tag: str = field(default="text")
 
-    quantize_bits: int = field(default=4, metadata={"choices": [2, 3, 4, 8]})
+    quantize_bits: int = field(default=4, metadata={"choices": [
+        2,
+        3,
+        4,
+        8
+        ]})
     quantize_group_size: int = field(default=128)
     quantize_desc_act: bool = field(default=False)
     quantize_sym: bool = field(default=True)
