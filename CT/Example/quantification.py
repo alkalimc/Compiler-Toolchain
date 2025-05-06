@@ -19,7 +19,7 @@ model_ids = [
 quantize_batch_size: int = 4
 
 def simpleQuantification(model_id: str, quantize_batch_size: int):
-    simpleScheduler = SimpleScheduler
+    simpleScheduler = SimpleScheduler()
     try: 
         simpleQuantification = SimpleQuantification(
             model_id=model_id,
