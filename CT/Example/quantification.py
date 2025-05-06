@@ -7,6 +7,7 @@ import threading
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain')))
 from CT.Quantification.simpleQuantification import SimpleQuantification
+from CT.Scheduler.simpleScheduler import SimpleScheduler
 
 model_ids = [
     "Qwen2-7B-Instruct",
@@ -18,7 +19,9 @@ model_ids = [
 quantize_batch_size: int = 4
 
 def simpleQuantification(model_id: str, quantize_batch_size: int):
-    try: simpleQuantification = SimpleQuantification(
+    simpleScheduler = SimpleScheduler
+    try: 
+        simpleQuantification = SimpleQuantification(
             model_id=model_id,
             quantize_batch_size=quantize_batch_size
         )
