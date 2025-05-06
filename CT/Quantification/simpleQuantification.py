@@ -2,7 +2,7 @@
 # Copyright 2024- alkali. All Rights Reserved.
 
 from dataclasses import dataclass, field
-from quantification import Quantification
+from CT.Quantification.quantification import Quantification
 
 @dataclass
 class SimpleQuantification():
