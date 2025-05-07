@@ -10,6 +10,11 @@ class SimpleScheduler():
         "4090",
         "H100"
         ]})
-
+    gpu_selected: int
+    
     def __post_init__(self):
-        Scheduler(scheduler_gpu_type=self.scheduler_gpu_type)
+        scheduler = Scheduler(scheduler_gpu_type=self.scheduler_gpu_type)
+        self.gpu_selected = scheduler.gpu_selected
+
+    def gpu_selected(self) -> int:
+        return self.gpu_selected

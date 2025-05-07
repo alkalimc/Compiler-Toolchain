@@ -13,7 +13,7 @@ class Quantification():
     model_id: str = field(default="Qwen2.5-7B-Instruct")
 
     data_id: str = field(default="allenai-c4")
-    data_files: str = field(default="en/c4-train.00001-of-01024.json.gz")
+    data_files: str = field(default=os.path.join("en", "c4-train.00001-of-01024.json.gz"))
     data_split: str = field(default="train")
     data_range: int = field(default=1024)
     data_tag: str = field(default="text")
@@ -32,10 +32,10 @@ class Quantification():
     trust_remote_code: bool = field(default=True)
 
     def __post_init__(self):
-        workspace: str = f"/data/disk0/Workspace/{self.username}"
-        model_path: str = f"{workspace}/Models/{self.model_id}"
-        data_path: str = f"{workspace}/Datasets/{self.data_id}"
-        quantize_path: str = f"{workspace}/Models/Quanted/{self.model_id}-W{self.quantize_bits}A16-gptq"
+        workspace: str = os.path.join("/data/disk0/Workspace", self.username)
+        model_path: str = os.path.join(workspace, "Models", self.model_id)
+        data_path: str = os.path.join(workspace, "Datasets", self.data_id)
+        quantize_path: str = os.path.join(workspace, "Models", "Quanted", f"{self.model_id}-W{self.quantize_bits}A16-gptq")
 
         quantizeConfig = QuantizeConfig(
             bits=self.quantize_bits,

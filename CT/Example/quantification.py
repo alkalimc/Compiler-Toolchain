@@ -3,9 +3,10 @@
 
 import os
 import sys
-import threading
+import subprocess
+import multiprocessing
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'disk0', 'Workspace', 'Compiler-Toolchain', 'Compiler-Toolchain')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data', 'disk0', 'Workspace', 'Compiler-Toolchain', 'Compiler-Toolchain')))
 from CT.Quantification.simpleQuantification import SimpleQuantification
 from CT.Scheduler.simpleScheduler import SimpleScheduler
 
@@ -18,8 +19,10 @@ model_ids = [
 quantize_batch_size: int = 4
 
 def simpleQuantification(model_id: str, quantize_batch_size: int):
-    simpleScheduler = SimpleScheduler()
     try: 
+        simpleScheduler = SimpleScheduler()
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(simpleScheduler.gpu_selected)
+        print(f"\nCUDA_VISIBLE_DEVICE = {subprocess.run("echo $CUDA_VISIBLE_DEVICES", shell=True, capture_output=True, text=True).stdout}")
         simpleQuantification = SimpleQuantification(
             model_id=model_id,
             quantize_batch_size=quantize_batch_size
@@ -27,12 +30,18 @@ def simpleQuantification(model_id: str, quantize_batch_size: int):
     except Exception as e:
         print(f"{model_id} Quantification Error, Reason: {e}")
         return
-threads = []
+    
+def main():
+    multiprocessing.set_start_method("spawn")
+    processes = []
 
-for model_id in model_ids:
-    thread = threading.Thread(target=simpleQuantification, args=(model_id, quantize_batch_size))
-    threads.append(thread)
-    thread.start()
+    for model_id in model_ids:
+        process = multiprocessing.Process(target=simpleQuantification, args=(model_id, quantize_batch_size))
+        processes.append(process)
+        process.start()
 
-for thread in threads:
-    thread.join()
+    for process in processes:
+        process.join()
+
+if __name__ == "__main__":
+    main()
