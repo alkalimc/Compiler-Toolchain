@@ -13,7 +13,7 @@ from CT.Scheduler.simpleScheduler import SimpleScheduler
 model_ids = [
     "Qwen2-7B-Instruct",
     "Qwen2-VL-7B-Instruct",
-    "Qwen2.5-7B-Instruct",
+#    "Qwen2.5-7B-Instruct",
     "Qwen2.5-VL-7B-Instruct"
 ]
 quantize_batch_size: int = 4
@@ -25,7 +25,8 @@ def simpleQuantification(model_id: str, quantize_batch_size: int):
         print(f"\nCUDA_VISIBLE_DEVICE = {subprocess.run("echo $CUDA_VISIBLE_DEVICES", shell=True, capture_output=True, text=True).stdout}")
         simpleQuantification = SimpleQuantification(
             model_id=model_id,
-            quantize_batch_size=quantize_batch_size
+            quantize_batch_size=quantize_batch_size,
+            quantize_device=str(simpleScheduler.gpu_selected)
         )
     except Exception as e:
         print(f"{model_id} Quantification Error, Reason: {e}")

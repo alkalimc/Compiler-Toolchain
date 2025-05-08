@@ -3,6 +3,8 @@
 
 from dataclasses import dataclass, field
 import os
+import torch
+from typing import Optional, Union
 from datasets import load_dataset
 from gptqmodel import GPTQModel, QuantizeConfig
 
@@ -28,7 +30,7 @@ class Quantification():
     quantize_desc_act: bool = field(default=False)
     quantize_sym: bool = field(default=True)
     quantize_batch_size: int = field(default=16, metadata={"min_value": 1})
-
+    quantize_device: Optional[Union[str, torch.device]] = field(default=None)
     trust_remote_code: bool = field(default=True)
 
     def __post_init__(self):
@@ -54,7 +56,8 @@ class Quantification():
         model = GPTQModel.load(
             model_id_or_path=model_path,
             quantize_config=quantizeConfig,
-            trust_remote_code=self.trust_remote_code
+            trust_remote_code=self.trust_remote_code,
+            device=self.quantize_device
             )
         model.quantize(
             calibration_dataset=data_calibration_dataset,
