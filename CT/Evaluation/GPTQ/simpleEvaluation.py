@@ -2,9 +2,9 @@
 # Copyright 2024- alkali. All Rights Reserved.
 
 from dataclasses import dataclass, field
-from lmEvaluationHarness import LmEvaluationHarness
 from gptqmodel.utils.eval import EVAL
-from evalPlus import EvalPlus
+from CT.Evaluation.GPTQ.lmEvaluationHarness import LmEvaluationHarness
+from CT.Evaluation.GPTQ.evalPlus import EvalPlus
 
 @dataclass
 class SimpleEvaluation():
@@ -44,4 +44,4 @@ class SimpleEvaluation():
             evalPlus = EvalPlus(
                 model_id=self.model_id,
                 evaluation_batch_size=self.evaluation_batch_size,
-                evaluation_tasks=evaluation_task)
+                evaluation_task=evaluation_task)

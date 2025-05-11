@@ -12,11 +12,11 @@ from CT.Scheduler.simpleScheduler import SimpleScheduler
 from CT.Evaluation.GPTQ.simpleEvaluation import SimpleEvaluation
 
 model_ids: list[str] = [
-    "Qwen2-7B-Instruct",
-    "Qwen2.5-7B-Instruct",
-    "Qwen2-VL-7B-Instruct",
-    "Qwen2.5-VL-7B-Instruct",
-    "DeepSeek-R1-Distill-Qwen-7B"
+    "Qwen2-7B-Instruct-W4A16-gptq",
+    "Qwen2.5-7B-Instruct-W4A16-gptq",
+    "Qwen2-VL-7B-Instruct-W4A16-gptq",
+    "Qwen2.5-VL-7B-Instruct-W4A16-gptq",
+    "DeepSeek-R1-Distill-Qwen-7B-W4A16-gptq"
 ]
 evaluation_framework: str = "EVALPLUS"
 evaluation_tasks:  list[str] = [

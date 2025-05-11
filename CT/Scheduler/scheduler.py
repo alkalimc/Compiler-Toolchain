@@ -11,8 +11,8 @@ class Scheduler():
     username: str = field(default="Compiler-Toolchain")
     
     scheduler_device_map: dict = field(default_factory=lambda: {
-        "4090": [0, 1, 2, 3, 5],
-        "H100": [4, 6]
+        "4090": [0, 1, 2, 3, 5, 6],
+        "H100": [4]
     })
     scheduler_gpu_type: str = field(default="4090", metadata={"choices": [
         "4090",

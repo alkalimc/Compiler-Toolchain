@@ -23,8 +23,8 @@ class EvalPlus():
     def __post_init__(self):
         workspace: str = os.path.join("/data/disk0/Workspace", self.username)
         model_path: str = os.path.join(workspace, "Models", "Quanted", self.model_id)
-        evaluation_path: str = os.path.join(workspace, "Evaluations", "Quanted", self.model_id, self.evaluation_framework)
-        evaluation_id: str = os.path.join(evaluation_path, f"{self.evaluation_tasks}.json")
+        evaluation_path: str = os.path.join(workspace, "Evaluations", "Quanted", self.model_id, self.evaluation_framework.__name__)
+        evaluation_id: str = os.path.join(evaluation_path, f"{self.evaluation_task.name}.json")
 
         if not os.path.exists(evaluation_path):
             os.makedirs(evaluation_path)
