@@ -15,7 +15,7 @@ class SimpleQuantification():
         ]})
     model_id: str = field(default="Qwen2.5-7B-Instruct")
     quantize_batch_size: int = field(default=16, metadata={"min_value": 1})
-    quantize_device: Optional[Union[str, torch.device]] = field(default=None)
+    quantize_device: Optional[Union[str, torch.device]] = field(default=torch.device("cuda:0"))
 
     def __post_init__(self):
         if self.model_type == "Qwen":

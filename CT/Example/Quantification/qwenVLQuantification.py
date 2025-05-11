@@ -13,8 +13,8 @@ from CT.Scheduler.simpleScheduler import SimpleScheduler
 
 model_type: str = "Qwen_VL"
 model_ids: list[str]  = [
-    "Qwen2-VL-7B-Instruct",
-    "Qwen2.5-VL-7B-Instruct"
+    "Qwen2.5-VL-7B-Instruct",
+    "Qwen2-VL-7B-Instruct"
 ]
 quantize_batch_size: int = 4
 

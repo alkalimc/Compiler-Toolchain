@@ -31,7 +31,8 @@ class QwenVLQuantification():
     quantize_desc_act: bool = field(default=False)
     quantize_sym: bool = field(default=True)
     quantize_batch_size: int = field(default=16, metadata={"min_value": 1})
-    quantize_device: Optional[Union[str, torch.device]] = field(default=None)
+    quantize_device: Optional[Union[str, torch.device]] = field(default=torch.device("cuda:0"))
+
     trust_remote_code: bool = field(default=True)
 
     def __post_init__(self):
