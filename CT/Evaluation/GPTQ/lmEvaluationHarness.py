@@ -6,9 +6,6 @@ import os
 from gptqmodel import GPTQModel
 from gptqmodel.utils.eval import EVAL
 
-###
-from gptqmodel import QuantizeConfig
-
 @dataclass
 class LmEvaluationHarness():
     username: str = field(default="Compiler-Toolchain")
@@ -28,11 +25,11 @@ class LmEvaluationHarness():
         model_path: str = os.path.join(workspace, "Models", "Quanted", self.model_id)
         evaluation_path: str = os.path.join(workspace, "Evaluations", "Quanted", self.model_id, self.evaluation_framework, f"{self.evaluation_tasks}.json")
 
-        evalplus_results = GPTQModel.eval(
+        evalplus_result = GPTQModel.eval(
             model_or_id_or_path=model_path,
             framework=self.evaluation_framework,
             tasks=self.evaluation_task,
             batch_size=self.evaluation_batch_size,
             trust_remote_code=self.trust_remote_code,
-            output_path=self.evaluation_path
+            output_path=evaluation_path
             )

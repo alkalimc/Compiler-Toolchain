@@ -11,14 +11,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data',
 from CT.Quantification.simpleQuantification import SimpleQuantification
 from CT.Scheduler.simpleScheduler import SimpleScheduler
 
-model_type = "Qwen_VL"
-model_ids = [
+model_type: str = "Qwen_VL"
+model_ids: list[str]  = [
     "Qwen2-VL-7B-Instruct",
     "Qwen2.5-VL-7B-Instruct"
 ]
 quantize_batch_size: int = 4
 
-def simpleQuantification(model_id: str, quantize_batch_size: int):
+def simpleQuantification(model_id: str):
     try: 
         simpleScheduler = SimpleScheduler()
         os.environ["CUDA_VISIBLE_DEVICES"] = str(simpleScheduler.gpu_selected)
@@ -39,7 +39,7 @@ def main():
     processes = []
 
     for model_id in model_ids:
-        process = multiprocessing.Process(target=simpleQuantification, args=(model_id, quantize_batch_size))
+        process = multiprocessing.Process(target=simpleQuantification, args=(model_id))
         processes.append(process)
         process.start()
 
