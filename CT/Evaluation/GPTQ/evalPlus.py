@@ -23,7 +23,11 @@ class EvalPlus():
     def __post_init__(self):
         workspace: str = os.path.join("/data/disk0/Workspace", self.username)
         model_path: str = os.path.join(workspace, "Models", "Quanted", self.model_id)
-        evaluation_path: str = os.path.join(workspace, "Evaluations", "Quanted", self.model_id, self.evaluation_framework, f"{self.evaluation_tasks}.json")
+        evaluation_path: str = os.path.join(workspace, "Evaluations", "Quanted", self.model_id, self.evaluation_framework)
+        evaluation_id: str = os.path.join(evaluation_path, f"{self.evaluation_tasks}.json")
+
+        if not os.path.exists(evaluation_path):
+            os.makedirs(evaluation_path)
 
         evalplus_result = GPTQModel.eval(
             model_or_id_or_path=model_path,
@@ -31,5 +35,5 @@ class EvalPlus():
             tasks=self.evaluation_task,
             batch_size=self.evaluation_batch_size,
             trust_remote_code=self.trust_remote_code,
-            output_path=evaluation_path
+            output_path=evaluation_id
             )

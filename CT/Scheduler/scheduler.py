@@ -61,6 +61,9 @@ class Scheduler():
         scheduler_lock_path = os.path.join(scheduler_runtime_path, "lock")
         scheduler_available_gpu = self.scheduler_device_map[self.scheduler_gpu_type]
 
+        if not os.path.exists(scheduler_lock_path):
+            os.makedirs(scheduler_lock_path)
+
         self.gpu_selected = self.scheduler_gpu(self,
             scheduler_temp_path=scheduler_temp_path,
             scheduler_available_gpu=scheduler_available_gpu,
