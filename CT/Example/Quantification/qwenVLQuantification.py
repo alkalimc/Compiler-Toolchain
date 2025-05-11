@@ -14,7 +14,7 @@ from CT.Scheduler.simpleScheduler import SimpleScheduler
 model_type = "Qwen_VL"
 model_ids = [
     "Qwen2-VL-7B-Instruct",
-#    "Qwen2.5-VL-7B-Instruct"
+    "Qwen2.5-VL-7B-Instruct"
 ]
 quantize_batch_size: int = 4
 
@@ -22,6 +22,7 @@ def simpleQuantification(model_id: str, quantize_batch_size: int):
     try: 
         simpleScheduler = SimpleScheduler()
         os.environ["CUDA_VISIBLE_DEVICES"] = str(simpleScheduler.gpu_selected)
+        torch.cuda.set_device(simpleScheduler.gpu_selected)
         print(f"\nCUDA_VISIBLE_DEVICE = {subprocess.run("echo $CUDA_VISIBLE_DEVICES", shell=True, capture_output=True, text=True).stdout}")
         simpleQuantification = SimpleQuantification(
             model_type=model_type,
