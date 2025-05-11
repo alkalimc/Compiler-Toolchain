@@ -3,6 +3,7 @@
 
 import os
 import sys
+import torch
 import subprocess
 import multiprocessing
 
@@ -26,7 +27,7 @@ def simpleQuantification(model_id: str, quantize_batch_size: int):
             model_type=model_type,
             model_id=model_id,
             quantize_batch_size=quantize_batch_size,
-            quantize_device=str(simpleScheduler.gpu_selected)
+            quantize_device=torch.device(f"cuda:{simpleScheduler.gpu_selected}")
         )
     except Exception as e:
         print(f"{model_id} Quantification Error, Reason: {e}")

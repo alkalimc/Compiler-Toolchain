@@ -31,7 +31,7 @@ class SimpleEvaluation():
             "BOOLQ",
             "OPENBOOKQA"
             ]})
-    else:
+    elif evaluation_framework == "EVALPLUS":
         evaluation_tasks: str = field(default="HUMAN", metadata={"choices": [
             "HUMAN",
             "MBPP"
@@ -46,7 +46,7 @@ class SimpleEvaluation():
                 model_id=self.model_id,
                 evaluation_batch_size=self.evaluation_batch_size,
                 evaluation_tasks=evaluation_tasks)
-        else:
+        elif self.evaluation_framework == "EVALPLUS":
             for evalPlus in EVAL.EVALPLUS:
                 if self.evaluation_tasks == evalPlus.name:
                     evaluation_tasks = evalPlus
