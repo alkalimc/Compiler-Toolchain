@@ -2,10 +2,6 @@
 # Copyright 2024- alkali. All Rights Reserved.
 
 from dataclasses import dataclass, field
-import os
-import torch
-import subprocess
-from typing import Optional, Union
 from CT.Evaluation.lmEvaluationHarness import LmEvaluationHarness
 from CT.Evaluation.evalPlus import EvalPlus
 
@@ -30,8 +26,7 @@ class SimpleEvaluation():
         "humaneval",
         "mbpp"
         ]})
-    evaluation_device: Optional[Union[str, torch.device]] = field(default=torch.device("cuda:0"))
-    torch.device("cuda:0")
+    evaluation_device: str = field(default="cuda:0")
     evaluation_batch_size: int = field(default=4, metadata={"min_value": 1})
 
     def __post_init__(self):

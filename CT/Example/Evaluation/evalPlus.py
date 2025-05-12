@@ -35,7 +35,7 @@ def simpleEvaluation(model_id: str, evaluation_task: str):
             model_id=model_id,
             evaluation_framework=evaluation_framework,
             evaluation_task=evaluation_task,
-            evaluation_device=torch.device(f"cuda:{simpleScheduler.gpu_selected}"),
+            evaluation_device=f"cuda:{simpleScheduler.gpu_selected}",
             evaluation_batch_size=evaluation_batch_size
         )
     except Exception as e:

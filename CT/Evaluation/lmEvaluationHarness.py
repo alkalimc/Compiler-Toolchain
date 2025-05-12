@@ -3,9 +3,7 @@
 
 from dataclasses import dataclass, field
 import os
-import torch
 import subprocess
-from typing import Optional, Union
 
 @dataclass
 class LmEvaluationHarness():
@@ -24,8 +22,7 @@ class LmEvaluationHarness():
         "boolq",
         "openbookqa"
         ]})
-    evaluation_device: Optional[Union[str, torch.device]] = field(default=torch.device("cuda:0"))
-    torch.device("cuda:0")
+    evaluation_device: str = field(default="cuda:0")
     evaluation_batch_size: int = field(default=4, metadata={"min_value": 1})
 
     trust_remote_code: bool = field(default=True)
@@ -39,4 +36,4 @@ class LmEvaluationHarness():
         if not os.path.exists(evaluation_path):
             os.makedirs(evaluation_path)
 
-        print(subprocess.run(f"lm-eval --model hf --model_args pretrained='{model_path}' --tasks {self.evaluation_task} --device {str(self.evaluation_device)} --batch_size {self.evaluation_batch_size} --trust_remote_code --output_path result > {evaluation_output_path} 2>&1 &", shell=True, capture_output=True, text=True).stdout)
+        print(subprocess.run(f"lm-eval --model hf --model_args pretrained='{model_path}' --tasks {self.evaluation_task} --device {self.evaluation_device} --batch_size {self.evaluation_batch_size} --trust_remote_code --output_path result > {evaluation_output_path} 2>&1 &", shell=True, capture_output=True, text=True).stdout)
