@@ -6,10 +6,11 @@ import os
 import torch
 import subprocess
 from typing import Optional, Union
+from CT.Evaluation.lmEvaluationHarness import LmEvaluationHarness
+from CT.Evaluation.evalPlus import EvalPlus
 
 @dataclass
-class EvalPlus():
-    username: str = field(default="Compiler-Toolchain")
+class SimpleEvaluation():
     model_id: str = field(default="Qwen2.5-7B-Instruct")
 
     evaluation_framework: str = field(default="lm-evaluation-harness", metadata={"choices": [
@@ -34,7 +35,17 @@ class EvalPlus():
     evaluation_batch_size: int = field(default=4, metadata={"min_value": 1})
 
     def __post_init__(self):
-        workspace: str = os.path.join("/data/disk0/Workspace", self.username)
-        model_path: str = os.path.join(workspace, "Models", self.model_id)
-        evaluation_path: str = os.path.join(workspace, "Evaluations", self.model_id, self.evaluation_framework)
-        evaluation_output_path: str = os.path.join(evaluation_path, f"{self.evaluation_task}.log")
+        if self.evaluation_framework == "lm-evaluation-harness":
+            LmEvaluationHarness(
+                model_id=self.model_id,
+                evaluation_task=self.evaluation_task,
+                evaluation_device=self.evaluation_device,
+                evaluation_batch_size=self.evaluation_batch_size
+            )
+        elif self.evaluation_framework == "EvalPlus":
+            EvalPlus(
+                model_id=self.model_id,
+                evaluation_task=self.evaluation_task,
+                evaluation_device=self.evaluation_device,
+                evaluation_batch_size=self.evaluation_batch_size
+            )

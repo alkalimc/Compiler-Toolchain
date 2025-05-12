@@ -18,8 +18,8 @@ class Scheduler():
         "4090",
         "H100"
         ]})
-    scheduler_minmum_free_vram: int = field(default=20, metadata={"min_value": 1})
-    scheduler_check_cycle_time: int = field(default=60, metadata={"min_value": 1})
+    scheduler_minmum_free_vram: int = field(default=22, metadata={"min_value": 1})
+    scheduler_check_cycle_time: int = field(default=64, metadata={"min_value": 1})
     scheduler_remove_lock_time: int = field(default=60, metadata={"min_value": 1})
     scheduler_gpu: int
     

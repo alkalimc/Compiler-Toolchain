@@ -8,7 +8,7 @@ import subprocess
 from typing import Optional, Union
 
 @dataclass
-class EvalPlus():
+class LmEvaluationHarness():
     username: str = field(default="Compiler-Toolchain")
     model_id: str = field(default="Qwen2.5-7B-Instruct")
 
