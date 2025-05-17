@@ -1,89 +1,316 @@
+import multiprocessing
+multiprocessing.set_start_method('spawn', force=True)
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
+import sys
+import os
+from datetime import datetime
+import traceback
+import time
+from pathlib import Path
+import contextlib
+import re
 
-# 创建Flask应用
+LOG_DIR = "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/WebUI/logs"
+ERROR_LOG = os.path.join(LOG_DIR, "quantization_errors.log")
+PROGRESS_LOG = os.path.join(LOG_DIR, "quantization_progress.log") 
+PORT = 7678
+HOST = '10.20.108.87'
+current_quant_process = None
+
+def setup_logging():
+    """初始化日志目录和文件"""
+    os.makedirs(LOG_DIR, exist_ok=True)
+    if not os.path.exists(ERROR_LOG):
+        with open(ERROR_LOG, 'w') as f:
+            f.write("====== Quantization Error Log ======\n")
+    Path(PROGRESS_LOG).touch(exist_ok=True)
+
+def log_error(error_msg, source="backend"):
+    """
+    记录错误到日志文件
+    :param error_msg: 错误信息
+    :param source: 错误来源 (backend/frontend/quant)
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = f"[{timestamp}] [{source.upper()}] {error_msg}\n"
+    
+    try:
+        with open(ERROR_LOG, 'a') as f:
+            f.write(log_entry)
+    except Exception as e:
+        print(f"无法写入日志文件: {str(e)}")
+
 app = Flask(__name__)
-
-# 启用跨域支持(CORS)
-CORS(app)
-
-# 初始化认证
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Authorization", "Content-Type"]
+    }
+})
 auth = HTTPBasicAuth()
 
-# 用户数据库（实际项目中应该使用数据库存储）
+setup_logging()
+
 users = {
     "admin": generate_password_hash("yuhaolab.CT"),  
     "user": generate_password_hash("yuhaolab.CT")
 }
 
-# 验证密码的回调函数
 @auth.verify_password
 def verify_password(username, password):
     if username in users and check_password_hash(users.get(username), password):
         return username
 
-# 存储量化参数的全局变量
 quantization_params = {
     "model_name": None,
     "precision": 4  # 默认精度
 }
 
-# GET /api 路由 - 用于浏览器直接访问
-@app.route('/api', methods=['GET'])
-@auth.login_required  # 添加认证装饰器
-def get_api():
-    return '''
-    <h1>API 服务已运行</h1>
-    <p>这是 GET /api 的响应</p>
-    <p>当前量化参数:</p>
-    <ul>
-      <li>模型: {}</li>
-      <li>精度: {}</li>
-    </ul>
-    <p>你可以：</p>
-    <ul>
-      <li>用 Postman 发送 POST 请求到 /api 设置参数</li>
-      <li>或者在前端代码中调用这个 API</li>
-    </ul>
-    <p>当前登录用户: {}</p>
-    '''.format(quantization_params["model_name"] or "默认模型", 
-               quantization_params["precision"],
-               auth.current_user())
+def quantification_entrypoint(model_id, log_path):
+    """
+    后端包装函数，用于捕获quantification输出并写入日志。
+    """
+    try:
+        with open(log_path, 'a') as f:
+            with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
+                # 动态导入，避免多进程冲突
+                sys.path.append("/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Example/Quantification")
+                from quantification import simpleQuantification
+                print(f"[INFO] 启动模型量化: {model_id}")
+                simpleQuantification(model_id)
+                print(f"[INFO] 模型量化完成: {model_id}")
+    except Exception as e:
+        with open(log_path, 'a') as f:
+            f.write(f"[ERROR] 模型量化异常: {e}\n")
 
-# POST /api 路由 - 接收前端数据
+def is_quant_running():
+    global current_quant_process
+    return current_quant_process is not None and current_quant_process.is_alive()
+
+def run_quantification(model_name):
+    """
+    封装量化进程，添加错误处理
+    """
+    global current_quant_process
+
+    try:
+        # 清空进度日志
+        with open(PROGRESS_LOG, 'w') as f:
+            f.write("")
+        # 动态导入避免多进程问题
+        sys.path.append("/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Example/Quantification")
+        from quantification import simpleQuantification
+        
+        log_error(f"开始量化模型: {model_name}", "quant")
+        
+        # 创建并启动量化进程
+        current_quant_process = multiprocessing.Process(
+            target=quantification_entrypoint,
+            args=(model_name, PROGRESS_LOG)
+        )
+        current_quant_process.start()
+        
+        log_error(f"模型量化成功: {model_name}", "quant")
+
+        return current_quant_process.pid
+    
+        
+    except Exception as e:
+        error_msg = f"量化失败 - 模型:{model_name} 错误:{traceback.format_exc()}"
+        log_error(error_msg, "quant")
+        current_quant_process = None
+        raise
+
+@app.route('/api', methods=['GET'])
+@auth.login_required
+def get_api():
+    """GET接口返回当前状态"""
+    try:
+        return f'''
+        <h1>API 服务已运行</h1>
+        <p>模型: {quantization_params["model_name"] or "未设置"}</p>
+        <p>精度: {quantization_params["precision"]}bit</p>
+        <p>用户: {auth.current_user()}</p>
+        '''
+    except Exception as e:
+        log_error(f"GET接口错误: {str(e)}", "backend")
+        return jsonify({'success': False, 'message': '服务异常'}), 500
+
 @app.route('/api', methods=['POST'])
-@auth.login_required  # 添加认证装饰器
+@auth.login_required
 def post_api():
     global quantization_params
     
-    data = request.get_json()
-    print('收到 POST 请求数据:', data)
-    
-    # 处理获取参数的请求
-    if data.get("action") == "get_quantization_params":
-        return jsonify(quantization_params)
-    
-    # 处理设置参数的请求
-    if "model_name" in data:
-        quantization_params["model_name"] = data["model_name"]
-    if "precision" in data:
-        quantization_params["precision"] = int(data["precision"])
-    
-    return jsonify({
-        'success': True,
-        'message': '参数更新成功',
-        'current_params': quantization_params,
-        'current_user': auth.current_user()  # 返回当前用户名
-    })
+    try:
+        data = request.get_json()
+        log_error(f"收到请求数据: {str(data)}", "backend")
 
-# 启动服务器
+        # 1. 处理参数获取请求
+        if data.get("action") == "get_quantization_params":
+            return jsonify(quantization_params)
+
+        # 2. 处理量化启动请求
+        if data.get("start_quantization"):
+            if "model_name" not in data:
+                error_msg = "缺少模型名称参数"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 400
+            
+            try:
+                # 如果已有量化进程在运行，先终止
+                if is_quant_running():
+                    current_quant_process.terminate()
+                    time.sleep(1)  # 等待进程终止
+                
+                # 启动新进程
+                pid = run_quantification(data["model_name"])
+                
+                log_error(f"已启动量化进程 PID: {pid}", "backend")
+                return jsonify({
+                    'success': True,
+                    'message': '量化进程已启动',
+                    'pid': pid,
+                    'current_params': {
+                        'model_name': data["model_name"]
+                    }
+                })
+            except Exception as e:
+                error_msg = f"量化进程启动失败: {str(e)}"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 500
+    
+        # 3. 处理普通参数更新
+        if "model_name" in data:
+            quantization_params["model_name"] = data["model_name"]
+            log_error(f"更新模型名称: {data['model_name']}", "backend")
+        
+        # if "precision" in data:
+        #     quantization_params["precision"] = int(data["precision"])
+        #     log_error(f"更新量化精度: {data['precision']}bit", "backend")
+
+        return jsonify({
+            'success': True,
+            'message': '参数更新成功',
+            'current_params': {
+                'model_name': quantization_params["model_name"],
+                # 'precision': quantization_params["precision"]  # 
+            }
+        })
+
+    except Exception as e:
+        error_msg = f"POST接口处理异常: {traceback.format_exc()}"
+        log_error(error_msg, "backend")
+        return jsonify({'success': False, 'message': '服务器内部错误'}), 500
+
+@app.route('/api/log_client_error', methods=['POST'])
+def log_client_error():
+    """接收前端错误日志"""
+    try:
+        data = request.get_json()
+        log_error(data.get("message", "未知前端错误"), "frontend")
+        return jsonify({'success': True})
+    except Exception as e:
+        log_error(f"前端日志接口错误: {str(e)}", "backend")
+        return jsonify({'success': False}), 500
+    
+@app.route('/api/verify', methods=['GET'])
+@auth.login_required
+def verify_auth():
+    """验证用户身份（前端登录用）"""
+    try:
+        return jsonify({
+            'success': True,
+            'message': '认证成功',
+            'user': auth.current_user()
+        })
+    except Exception as e:
+        log_error(f"认证接口错误: {str(e)}", "backend")
+        return jsonify({'success': False, 'message': '认证失败'}), 401
+
+def remove_ansi_codes(text):
+    ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+    return ansi_escape.sub('', text)
+
+@app.route('/api/progress', methods=['GET'])
+@auth.login_required
+def get_progress():
+    """获取当前量化进度"""
+    try:
+        if not os.path.exists(PROGRESS_LOG):
+            return jsonify({
+                'success': False, 
+                'message': '进度文件不存在',
+                'is_running': False
+            }), 404
+        
+        # 读取最后50行进度日志
+        with open(PROGRESS_LOG, 'r') as f:
+            lines = f.readlines()[-50:]  # 获取最后50行
+        
+        # 过滤 ANSI 转义字符
+        clean_lines = [remove_ansi_codes(line.strip()) for line in lines if line.strip()]
+        
+        return jsonify({
+            'success': True,
+            'progress': clean_lines,
+            'is_running': is_quant_running()
+        })
+    except Exception as e:
+        log_error(f"获取进度失败: {str(e)}", "backend")
+        return jsonify({
+            'success': False, 
+            'message': '获取进度失败',
+            'is_running': False
+        }), 500
+    
+@app.route('/api/cancel_quant', methods=['POST'])
+@auth.login_required
+def cancel_quantization():
+    global current_quant_process
+    
+    try:
+        if not is_quant_running():
+            return jsonify({
+                'success': False,
+                'message': '没有正在运行的量化进程'
+            }), 400
+        
+        # 先写入日志再终止进程
+        with open(PROGRESS_LOG, 'a') as f:
+            f.write("[INFO] 正在取消量化进程...\n")
+        
+        current_quant_process.terminate()
+        current_quant_process.join(timeout=2)  # 设置超时
+        
+        # 确认进程已终止后再记录
+        with open(PROGRESS_LOG, 'a') as f:
+            f.write("[INFO] 量化进程已被用户取消\n")
+        
+        current_quant_process = None
+        
+        return jsonify({
+            'success': True,
+            'message': '量化进程已成功取消'
+        })
+    except Exception as e:
+        error_msg = f"取消量化失败: {str(e)}"
+        log_error(error_msg, "backend")
+        return jsonify({
+            'success': False,
+            'message': error_msg
+        }), 500
+    
 if __name__ == '__main__':
-    PORT = 7678
     print(f'''
     服务器已启动！
-    - GET 测试: http://10.20.108.87:{PORT}/api
+    - GET 测试: http://{HOST}:{PORT}/api
+    - 进度获取: http://{HOST}:{PORT}/api/progress
     - POST 测试需使用 Postman 或前端调用
+    - 错误日志路径: {ERROR_LOG}
+    - 进度日志路径: {PROGRESS_LOG}
     ''')
-    app.run(host='10.20.108.87', port=PORT)
+    app.run(host=HOST, port=PORT)
