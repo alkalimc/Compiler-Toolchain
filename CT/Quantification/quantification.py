@@ -15,7 +15,7 @@ class Quantification():
     model_id: str = field(default="Qwen2.5-7B-Instruct")
 
     data_id: str = field(default="allenai-c4")
-    data_files: str = field(default=os.path.join("en", "c4-train.00001-of-01024.json.gz"))
+    data_file: str = field(default=os.path.join("en", "c4-train.00001-of-01024.json.gz"))
     data_split: str = field(default="train")
     data_range: int = field(default=1024)
     data_tag: str = field(default="text")
@@ -49,7 +49,7 @@ class Quantification():
 
         data_calibration_dataset = load_dataset(
             path=data_path,
-            data_files=self.data_files,
+            data_files=self.data_file,
             split=self.data_split,
             trust_remote_code=self.trust_remote_code
           ).select(range(self.data_range))[self.data_tag]

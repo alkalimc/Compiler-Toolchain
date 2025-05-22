@@ -9,16 +9,15 @@ from datasets import load_dataset
 from gptqmodel import GPTQModel, QuantizeConfig
 
 @dataclass
-class QwenVLQuantification():
+class Quantification():
     username: str = field(default="Compiler-Toolchain")
 
     model_id: str = field(default="Qwen2.5-7B-Instruct")
 
     data_id: str = field(default="allenai-c4")
-    data_file: str = field(default=os.path.join("en", "c4-train.00001-of-01024.json.gz"))
+    data_files: str = field(default=os.path.join("en", "c4-train.00001-of-01024.json.gz"))
     data_split: str = field(default="train")
-    data_range: int = field(default=256)
-    data_sequence_length: int = field(default=1024)
+    data_range: int = field(default=1024)
     data_tag: str = field(default="text")
 
     quantize_bits: int = field(default=4, metadata={"choices": [
@@ -50,24 +49,10 @@ class QwenVLQuantification():
 
         data_calibration_dataset = load_dataset(
             path=data_path,
-            data_files=self.data_file,
+            data_files=self.data_files,
             split=self.data_split,
             trust_remote_code=self.trust_remote_code
-          ).filter(lambda x: len(x["text"]) >= self.data_range)
-        
-        data_calibration_dataset_Qwen_VL=[]
-
-        for example in data_calibration_dataset.select(range(self.data_sequence_length)):
-            data_calibration_dataset_Qwen_VL.append(
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": example["text"]},
-                    ],
-                }
-            )
-
-        data_calibration_dataset = data_calibration_dataset_Qwen_VL
+          ).select(range(self.data_range))[self.data_tag]
     
         model = GPTQModel.load(
             model_id_or_path=model_path,

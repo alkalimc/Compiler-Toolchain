@@ -11,9 +11,17 @@ from gptqmodel.utils.backend import BACKEND
 from compile_qwen import *
 from GPTQModel import GPTQQuantizer
 from compile_qwen import QwenCompiler
+from compile_glm import GlmCompiler
+
 compiler = QwenCompiler(
     quantize_model="/data/disk0/Workspace/Compiler-Toolchain/Models/Quanted/Qwen2-7B-Instruct-W4A16-gptq",
     wbits=4,
     group_size=128
 )
+compiler = GlmCompiler(
+    quantize_model="/data/disk0/Workspace/Compiler-Toolchain/Models/Quanted/",
+    wbits=4,
+    group_size=128
+)
+
 compiler.compile_model()
