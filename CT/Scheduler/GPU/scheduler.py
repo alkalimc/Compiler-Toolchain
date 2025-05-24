@@ -4,7 +4,6 @@
 from dataclasses import dataclass, field
 import os
 import time
-import threading
 
 @dataclass
 class Scheduler():
@@ -21,7 +20,8 @@ class Scheduler():
     scheduler_minmum_free_vram: int = field(default=22, metadata={"min_value": 1})
     scheduler_check_cycle_time: int = field(default=64, metadata={"min_value": 1})
     scheduler_remove_lock_time: int = field(default=60, metadata={"min_value": 1})
-    scheduler_gpu: int
+    
+    gpu_selected: int
     
     def gpu_status(self, gpu: int, scheduler_lock_path: str) -> bool:
         lock_file: str = f"{scheduler_lock_path}/CUDA:{gpu}.lock"
@@ -40,17 +40,17 @@ class Scheduler():
 
     def scheduler_gpu(self, scheduler_temp_path: str, scheduler_available_gpu, scheduler_lock_path: str) -> int:
         while True:
-            os.system("nvidia-smi -q -d Memory | grep -A8 'GPU' | grep 'Free' | awk \'{print $3}\' > /data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Scheduler/GPU/runtime/temp")
+            os.system(f"nvidia-smi -q -d Memory | grep -A8 'GPU' | grep 'Free' | awk '{{print $3}}' > {scheduler_temp_path}")
             with open(scheduler_temp_path, "r") as temp:
                 lines: list[str] = temp.readlines()
             gpu_free_vram: list[int] = [int(x.strip()) for x in lines]
 
-            for i in scheduler_available_gpu:
-                if gpu_free_vram[i] >= self.scheduler_minmum_free_vram * 1024:
-                    if self.gpu_status(i, scheduler_lock_path):
-                        self.gpu_lock(gpu = i, scheduler_lock_path=scheduler_lock_path)
-                        print(f"\nUse CUDA:{i}")
-                        return i
+            for gpu in scheduler_available_gpu:
+                if gpu_free_vram[gpu] >= self.scheduler_minmum_free_vram * 1024:
+                    if self.gpu_status(gpu=gpu, scheduler_lock_path=scheduler_lock_path):
+                        self.gpu_lock(gpu=gpu, scheduler_lock_path=scheduler_lock_path)
+                        print(f"\nUse CUDA:{gpu}")
+                        return gpu
             print(f"\nNo Free CUDA Device Available Now, Automatically Retry After {self.scheduler_check_cycle_time} Seconds")
             time.sleep(self.scheduler_check_cycle_time)
 

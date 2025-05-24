@@ -15,10 +15,16 @@ class SimpleDeployment():
         ]})
 
     deployment_max_model_len: int = field(default=32768, metadata={"min_value": 1})
-    deployment_gpu_memory_utilization: float = field(default=0.95, metadata={"min_value": 0.01})
+    deployment_gpu_memory_utilization: float = field(default=0.95, metadata={
+        "min_value": 0.01,
+        "max_value": 0.99
+        })
     deployment_enforce_eager: bool = field(default=True)
     deployment_host: str = field(default="0.0.0.0")
-    deployment_port: str = field(default="2570")
+    deployment_port: int = field(default=2570, metadata={
+        "min_value": 1024,
+        "max_value": 49151
+        })
     deployment_api_key: str = field(default="yuhaolab")
 
     def __post_init__(self):

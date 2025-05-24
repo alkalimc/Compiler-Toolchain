@@ -15,10 +15,16 @@ class Deployment():
         ]})
 
     deployment_max_model_len: int = field(default=32768, metadata={"min_value": 1})
-    deployment_gpu_memory_utilization: float = field(default=0.95, metadata={"min_value": 0.01})
+    deployment_gpu_memory_utilization: float = field(default=0.95, metadata={
+        "min_value": 0.01,
+        "max_value": 0.99
+        })
     deployment_enforce_eager: bool = field(default=True)
     deployment_host: str = field(default="0.0.0.0")
-    deployment_port: str = field(default="2570")
+    deployment_port: int = field(default=2570, metadata={
+        "min_value": 1024,
+        "max_value": 49151
+        })
     deployment_api_key: str = field(default="yuhaolab")
 
     def __post_init__(self):
@@ -28,17 +34,66 @@ class Deployment():
         if self.model_type == "FP16":
             model_path: str = os.path.join(workspace, "Models", self.model_id)
             
-            if self.deployment_enforce_eager == True:
-                print(subprocess.run(f"vllm serve {model_path} --max_model_len {self.deployment_max_model_len} --gpu-memory-utilization {self.deployment_gpu_memory_utilization} --enforce-eager --host {self.deployment_host} --port {self.deployment_port} --served-model-name {deployment_served_model_name} --api-key {self.deployment_api_key}", shell=True, capture_output=True, text=True).stdout)
+            if self.deployment_enforce_eager:
+                print(subprocess.run(
+                    f"vllm serve {model_path} "
+                    f"--max_model_len {self.deployment_max_model_len} "
+                    f"--model_args pretrained='{model_path}' "
+                    f"--gpu-memory-utilization {self.deployment_gpu_memory_utilization} "
+                    f"--enforce-eager "
+                    f"--host {self.deployment_host} "
+                    f"--port {self.deployment_port} "
+                    f"--served-model-name {deployment_served_model_name} "
+                    f"--api-key {self.deployment_api_key}",
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                ).stdout)
             else:
-                model_path: str = os.path.join(workspace, "Models", self.model_id)
-                print(subprocess.run(f"vllm serve {model_path} --max_model_len {self.deployment_max_model_len} --gpu-memory-utilization {self.deployment_gpu_memory_utilization} --host {self.deployment_host} --port {self.deployment_port} --served-model-name {deployment_served_model_name} --api-key {self.deployment_api_key}", shell=True, capture_output=True, text=True).stdout)
+                print(subprocess.run(
+                    f"vllm serve {model_path} "
+                    f"--max_model_len {self.deployment_max_model_len} "
+                    f"--model_args pretrained='{model_path}' "
+                    f"--gpu-memory-utilization {self.deployment_gpu_memory_utilization} "
+                    f"--host {self.deployment_host} "
+                    f"--port {self.deployment_port} "
+                    f"--served-model-name {deployment_served_model_name} "
+                    f"--api-key {self.deployment_api_key}",
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                ).stdout)
         elif self.model_type == "gptq":
             model_path: str = os.path.join(workspace, "Models", "Quanted", self.model_id)
 
-            if self.deployment_enforce_eager == True:
-                model_path: str = os.path.join(workspace, "Models", self.model_id)
-                print(subprocess.run(f"vllm serve {model_path} --max_model_len {self.deployment_max_model_len} --gpu-memory-utilization {self.deployment_gpu_memory_utilization} --enforce-eager --host {self.deployment_host} --port {self.deployment_port} --served-model-name {deployment_served_model_name} --api-key {self.deployment_api_key} --quantization gptq_marlin", shell=True, capture_output=True, text=True).stdout)
+            if self.deployment_enforce_eager:
+                print(subprocess.run(
+                    f"vllm serve {model_path} "
+                    f"--max_model_len {self.deployment_max_model_len} "
+                    f"--model_args pretrained='{model_path}' "
+                    f"--gpu-memory-utilization {self.deployment_gpu_memory_utilization} "
+                    f"--enforce-eager "
+                    f"--host {self.deployment_host} "
+                    f"--port {self.deployment_port} "
+                    f"--served-model-name {deployment_served_model_name} "
+                    f"--api-key {self.deployment_api_key} "
+                    f"--quantization gptq_marlin",
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                ).stdout)
             else:
-                model_path: str = os.path.join(workspace, "Models", self.model_id)
-                print(subprocess.run(f"vllm serve {model_path} --max_model_len {self.deployment_max_model_len} --gpu-memory-utilization {self.deployment_gpu_memory_utilization} --host {self.deployment_host} --port {self.deployment_port} --served-model-name {deployment_served_model_name} --api-key {self.deployment_api_key} --quantization gptq_marlin", shell=True, capture_output=True, text=True).stdout)
+                print(subprocess.run(
+                    f"vllm serve {model_path} "
+                    f"--max_model_len {self.deployment_max_model_len} "
+                    f"--model_args pretrained='{model_path}' "
+                    f"--gpu-memory-utilization {self.deployment_gpu_memory_utilization} "
+                    f"--host {self.deployment_host} "
+                    f"--port {self.deployment_port} "
+                    f"--served-model-name {deployment_served_model_name} "
+                    f"--api-key {self.deployment_api_key} "
+                    f"--quantization gptq_marlin",
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                ).stdout)
