@@ -40,7 +40,7 @@ class Scheduler():
 
     def scheduler_gpu(self, scheduler_temp_path: str, scheduler_available_gpu, scheduler_lock_path: str) -> int:
         while True:
-            os.system("nvidia-smi -q -d Memory | grep -A8 'GPU' | grep 'Free' | awk \'{print $3}\' > /data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Scheduler/runtime/temp")
+            os.system("nvidia-smi -q -d Memory | grep -A8 'GPU' | grep 'Free' | awk \'{print $3}\' > /data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Scheduler/GPU/runtime/temp")
             with open(scheduler_temp_path, "r") as temp:
                 lines: list[str] = temp.readlines()
             gpu_free_vram: list[int] = [int(x.strip()) for x in lines]
@@ -56,7 +56,7 @@ class Scheduler():
 
     def __post_init__(self):
         workspace: str = os.path.join("/data/disk0/Workspace", self.username)
-        scheduler_runtime_path: str = os.path.join(workspace, "Compiler-Toolchain", "CT", "Scheduler", "runtime")
+        scheduler_runtime_path: str = os.path.join(workspace, "Compiler-Toolchain", "CT", "Scheduler", "GPU", "runtime")
         scheduler_temp_path = os.path.join(scheduler_runtime_path, "temp")
         scheduler_lock_path = os.path.join(scheduler_runtime_path, "lock")
         scheduler_available_gpu = self.scheduler_device_map[self.scheduler_gpu_type]

@@ -16,6 +16,8 @@ import re
 LOG_DIR = "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/WebUI/logs"
 ERROR_LOG = os.path.join(LOG_DIR, "quantization_errors.log")
 PROGRESS_LOG = os.path.join(LOG_DIR, "quantization_progress.log") 
+EVALUATION_LOG = os.path.join(LOG_DIR, "evaluation_progress.log")
+current_eval_process = None
 PORT = 7678
 HOST = '10.20.108.87'
 current_quant_process = None
@@ -27,6 +29,7 @@ def setup_logging():
         with open(ERROR_LOG, 'w') as f:
             f.write("====== Quantization Error Log ======\n")
     Path(PROGRESS_LOG).touch(exist_ok=True)
+    Path(EVALUATION_LOG).touch(exist_ok=True)
 
 def log_error(error_msg, source="backend"):
     """
@@ -130,6 +133,72 @@ def run_quantification(model_name):
         current_quant_process = None
         raise
 
+def evaluation_entrypoint(model_name, eval_method, log_path, is_quantized=False):
+    """
+    评估任务入口：根据是否量化，调用不同的路径与模块。
+    """
+    try:
+        with open(log_path, 'a') as f:
+            with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
+
+                if is_quantized:
+                    sys.path.insert(0, "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Example/Evaluation/GPTQ")
+                    print(f"[INFO] 使用 GPTQ 评估模块评估量化模型: {model_name}")
+                else:
+                    sys.path.insert(0, "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Example/Evaluation")
+                    print(f"[INFO] 使用原始评估模块评估模型: {model_name}")
+
+                # 模块导入根据评估方法切换
+                if eval_method in ["humaneval", "mbpp"]:
+                    from evalPlus import simpleEvaluation
+                else:
+                    from lmEvaluationHarness import simpleEvaluation
+
+                # 调用评估函数
+                simpleEvaluation(model_id=model_name, evaluation_task=eval_method)
+                print(f"[INFO] 评估完成: {model_name} ({eval_method})")
+
+    except Exception as e:
+        with open(log_path, 'a') as f:
+            f.write(f"[ERROR] 评估异常: {e}\n")
+
+
+def is_eval_running():
+    global current_eval_process
+    return current_eval_process is not None and current_eval_process.is_alive()
+
+def run_evaluation(model_name, eval_method, is_quantized=False):
+    """
+    启动评估进程，根据是否量化，选择正确路径和 model_id。
+    """
+    global current_eval_process
+
+    try:
+        with open(EVALUATION_LOG, 'w') as f:
+            f.write("")
+
+        log_error(f"准备评估: {model_name}, 量化模型: {is_quantized}", "eval")
+
+        # 对量化模型进行 ID 补全
+        full_model_id = model_name
+        if is_quantized:
+            full_model_id = f"{model_name}-W4A16-gptq"
+
+        current_eval_process = multiprocessing.Process(
+            target=evaluation_entrypoint,
+            args=(full_model_id, eval_method, EVALUATION_LOG, is_quantized)
+        )
+        current_eval_process.start()
+
+        return current_eval_process.pid
+
+    except Exception as e:
+        error_msg = f"评估失败 - 模型:{model_name} 方法:{eval_method} 错误:{traceback.format_exc()}"
+        log_error(error_msg, "eval")
+        current_eval_process = None
+        raise
+
+
 @app.route('/api', methods=['GET'])
 @auth.login_required
 def get_api():
@@ -148,11 +217,39 @@ def get_api():
 @app.route('/api', methods=['POST'])
 @auth.login_required
 def post_api():
-    global quantization_params
+    global quantization_params, current_eval_process
     
     try:
         data = request.get_json()
         log_error(f"收到请求数据: {str(data)}", "backend")
+
+        # 1. 处理评估启动请求
+        if data.get("start_evaluation"):
+            if not all(k in data for k in ["model_name", "eval_method"]):
+                error_msg = "缺少模型名称或评估方法参数"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 400
+            
+            try:
+                # 如果已有评估进程在运行，先终止
+                if is_eval_running():
+                    current_eval_process.terminate()
+                    time.sleep(1)
+                
+                # 启动新评估进程
+                is_quantized = data.get("is_quantized", False)
+                pid = run_evaluation(data["model_name"], data["eval_method"], is_quantized=is_quantized)
+                
+                return jsonify({
+                    'success': True,
+                    'message': '评估进程已启动',
+                    'pid': pid,
+                    'eval_method': data["eval_method"]
+                })
+            except Exception as e:
+                error_msg = f"评估进程启动失败: {str(e)}"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 500
 
         # 1. 处理参数获取请求
         if data.get("action") == "get_quantization_params":
@@ -272,6 +369,36 @@ def get_progress():
             'is_running': False
         }), 500
     
+@app.route('/api/eval_progress', methods=['GET'])
+@auth.login_required
+def get_eval_progress():
+    """获取评估进度（类似get_progress）"""
+    try:
+        if not os.path.exists(EVALUATION_LOG):
+            return jsonify({
+                'success': False, 
+                'message': '评估日志不存在',
+                'is_running': False
+            }), 404
+        
+        with open(EVALUATION_LOG, 'r') as f:
+            lines = f.readlines()[-50:]
+        
+        clean_lines = [remove_ansi_codes(line.strip()) for line in lines if line.strip()]
+        
+        return jsonify({
+            'success': True,
+            'progress': clean_lines,
+            'is_running': is_eval_running()
+        })
+    except Exception as e:
+        log_error(f"获取评估进度失败: {str(e)}", "backend")
+        return jsonify({
+            'success': False, 
+            'message': '获取评估进度失败',
+            'is_running': False
+        }), 500
+
 @app.route('/api/cancel_quant', methods=['POST'])
 @auth.login_required
 def cancel_quantization():
@@ -309,6 +436,41 @@ def cancel_quantization():
             'message': error_msg
         }), 500
     
+@app.route('/api/cancel_eval', methods=['POST'])
+@auth.login_required
+def cancel_evaluation():
+    global current_eval_process
+    
+    try:
+        if not is_eval_running():
+            return jsonify({
+                'success': False,
+                'message': '没有正在运行的评估进程'
+            }), 400
+        
+        with open(EVALUATION_LOG, 'a') as f:
+            f.write("[INFO] 正在取消评估进程...\n")
+        
+        current_eval_process.terminate()
+        current_eval_process.join(timeout=2)
+        
+        with open(EVALUATION_LOG, 'a') as f:
+            f.write("[INFO] 评估进程已被用户取消\n")
+        
+        current_eval_process = None
+        
+        return jsonify({
+            'success': True,
+            'message': '评估进程已成功取消'
+        })
+    except Exception as e:
+        error_msg = f"取消评估失败: {str(e)}"
+        log_error(error_msg, "backend")
+        return jsonify({
+            'success': False,
+            'message': error_msg
+        }), 500
+
 if __name__ == '__main__':
     print(f'''
     服务器已启动！

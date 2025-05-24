@@ -2,7 +2,7 @@
 # Copyright 2024- alkali. All Rights Reserved.
 
 from dataclasses import dataclass, field
-from CT.Scheduler.scheduler import Scheduler
+from CT.Scheduler.GPU.scheduler import Scheduler
 
 @dataclass
 class SimpleScheduler():

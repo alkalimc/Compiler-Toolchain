@@ -6,7 +6,7 @@ import sys
 import subprocess
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data', 'disk0', 'Workspace', 'Compiler-Toolchain', 'Compiler-Toolchain')))
-from CT.Scheduler.simpleScheduler import SimpleScheduler
+from CT.Scheduler.GPU.simpleScheduler import SimpleScheduler
 
 simpleScheduler = SimpleScheduler()
 print(simpleScheduler.gpu_selected)

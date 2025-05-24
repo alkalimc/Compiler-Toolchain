@@ -8,7 +8,7 @@ import subprocess
 import multiprocessing
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data', 'disk0', 'Workspace', 'Compiler-Toolchain', 'Compiler-Toolchain')))
-from CT.Scheduler.simpleScheduler import SimpleScheduler
+from CT.Scheduler.GPU.simpleScheduler import SimpleScheduler
 from CT.Evaluation.simpleEvaluation import SimpleEvaluation
 
 model_ids: list[str] = [
