@@ -25,7 +25,7 @@ class SimpleQuantification():
             quantification = Quantification(
                 model_id=self.model_id,
                 data_id=self.data_id,
-                data_files=self.data_file,
+                data_file=self.data_file,
                 quantize_batch_size=self.quantize_batch_size,
                 quantize_device=self.quantize_device
                 )
@@ -33,7 +33,7 @@ class SimpleQuantification():
             qwenVLQuantification = QwenVLQuantification(
                 model_id=self.model_id,
                 data_id=self.data_id,
-                data_files=self.data_file,
+                data_file=self.data_file,
                 quantize_batch_size=self.quantize_batch_size,
                 quantize_device=self.quantize_device
                 )
