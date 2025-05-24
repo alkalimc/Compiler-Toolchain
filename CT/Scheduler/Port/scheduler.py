@@ -11,10 +11,10 @@ import psutil
 class Scheduler():
     username: str = field(default="Compiler-Toolchain")
     
-    scheduler_port: list[int] = field(default=list(range(1024, 49151)))
+    scheduler_port: list[int] = field(default_factory=lambda: list(range(1024, 49151)))
     scheduler_check_cycle_time: int = field(default=64, metadata={"min_value": 1})
     scheduler_remove_lock_time: int = field(default=60, metadata={"min_value": 1})
-    port_selected: int
+    port_selected: int = 0
     
     def port_status(self, port: int, scheduler_lock_path: str) -> bool:
         lock_file: str = f"{scheduler_lock_path}/{port}.lock"
@@ -30,16 +30,16 @@ class Scheduler():
         lock_file: str = f"{scheduler_lock_path}/{port}.lock"
         with open(lock_file, "w") as lock:
             lock.write(str(time.time()))
-    def port_used() -> set:
+    def portUsed(self) -> set:
         port_used = set()
         for connection in psutil.net_connections(kind='inet'):
             port_used.add(connection.laddr.port)
         return port_used
 
-    def scheduler_port(self, scheduler_lock_path: str) -> int:
+    def schedulerPort(self, scheduler_lock_path: str) -> int:
         while True:
             random.shuffle(self.scheduler_port)
-            port_used: set = self.port_used()
+            port_used: set = self.portUsed()
             for port in self.scheduler_port:
                 if port not in port_used:
                     if self.port_status(port=port, scheduler_lock_path=scheduler_lock_path):
@@ -58,10 +58,7 @@ class Scheduler():
         if not os.path.exists(scheduler_lock_path):
             os.makedirs(scheduler_lock_path)
 
-        self.port_selected = self.scheduler_port(self,
-            scheduler_temp_path=scheduler_temp_path,
-            scheduler_lock_path=scheduler_lock_path
-            )
+        self.port_selected = self.schedulerPort(scheduler_lock_path=scheduler_lock_path)
         
-    def port_selected(self) -> int:
+    def portSelected(self) -> int:
         return self.port_selected

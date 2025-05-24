@@ -28,14 +28,14 @@ evaluation_batch_size: int = 4
 def simpleEvaluation(model_id: str, evaluation_task: str):
     try: 
         simpleScheduler = SimpleScheduler()
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(simpleScheduler.gpu_selected)
-        torch.cuda.set_device(simpleScheduler.gpu_selected)
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(simpleScheduler.gpuSelected())
+        torch.cuda.set_device(simpleScheduler.gpuSelected())
         print(f"\nCUDA_VISIBLE_DEVICE = {subprocess.run("echo $CUDA_VISIBLE_DEVICES", shell=True, capture_output=True, text=True).stdout}")
         simpleEvaluation = SimpleEvaluation(
             model_id=model_id,
             evaluation_framework=evaluation_framework,
             evaluation_task=evaluation_task,
-            evaluation_device=f"cuda:{simpleScheduler.gpu_selected}",
+            evaluation_device=f"cuda:{simpleScheduler.gpuSelected()}",
             evaluation_batch_size=evaluation_batch_size
         )
     except Exception as e:

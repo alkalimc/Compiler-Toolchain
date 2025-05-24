@@ -21,7 +21,7 @@ class Scheduler():
     scheduler_check_cycle_time: int = field(default=64, metadata={"min_value": 1})
     scheduler_remove_lock_time: int = field(default=60, metadata={"min_value": 1})
     
-    gpu_selected: int
+    gpu_selected: int = 0
     
     def gpu_status(self, gpu: int, scheduler_lock_path: str) -> bool:
         lock_file: str = f"{scheduler_lock_path}/CUDA:{gpu}.lock"
@@ -64,11 +64,11 @@ class Scheduler():
         if not os.path.exists(scheduler_lock_path):
             os.makedirs(scheduler_lock_path)
 
-        self.gpu_selected = self.scheduler_gpu(self,
+        self.gpu_selected = self.scheduler_gpu(
             scheduler_temp_path=scheduler_temp_path,
             scheduler_available_gpu=scheduler_available_gpu,
             scheduler_lock_path=scheduler_lock_path
             )
         
-    def gpu_selected(self) -> int:
+    def gpuSelected(self) -> int:
         return self.gpu_selected

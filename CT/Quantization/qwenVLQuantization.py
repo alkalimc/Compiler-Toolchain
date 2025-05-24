@@ -9,7 +9,7 @@ from datasets import load_dataset
 from gptqmodel import GPTQModel, QuantizeConfig
 
 @dataclass
-class QwenVLQuantification():
+class QwenVLQuantization():
     username: str = field(default="Compiler-Toolchain")
 
     model_id: str = field(default="Qwen2.5-7B-Instruct")
@@ -21,17 +21,17 @@ class QwenVLQuantification():
     data_sequence_length: int = field(default=1024)
     data_tag: str = field(default="text")
 
-    quantize_bits: int = field(default=4, metadata={"choices": [
+    quantization_bits: int = field(default=4, metadata={"choices": [
         2,
         3,
         4,
         8
         ]})
-    quantize_group_size: int = field(default=128)
-    quantize_desc_act: bool = field(default=False)
-    quantize_sym: bool = field(default=True)
-    quantize_batch_size: int = field(default=16, metadata={"min_value": 1})
-    quantize_device: Optional[Union[str, torch.device]] = field(default=torch.device("cuda:0"))
+    quantization_group_size: int = field(default=128)
+    quantization_desc_act: bool = field(default=False)
+    quantization_sym: bool = field(default=True)
+    quantization_batch_size: int = field(default=16, metadata={"min_value": 1})
+    quantization_device: Optional[Union[str, torch.device]] = field(default=torch.device("cuda:0"))
 
     trust_remote_code: bool = field(default=True)
 
@@ -39,13 +39,13 @@ class QwenVLQuantification():
         workspace: str = os.path.join("/data/disk0/Workspace", self.username)
         model_path: str = os.path.join(workspace, "Models", self.model_id)
         data_path: str = os.path.join(workspace, "Datasets", self.data_id)
-        quantize_path: str = os.path.join(workspace, "Models", "Quanted", f"{self.model_id}-W{self.quantize_bits}A16-gptq")
+        quantization_path: str = os.path.join(workspace, "Models", "Quanted", f"{self.model_id}-W{self.quantization_bits}A16-gptq")
 
-        quantizeConfig = QuantizeConfig(
-            bits=self.quantize_bits,
-            group_size=self.quantize_group_size,
-            desc_act=self.quantize_desc_act,
-            sym=self.quantize_sym
+        quantizationConfig = QuantizeConfig(
+            bits=self.quantization_bits,
+            group_size=self.quantization_group_size,
+            desc_act=self.quantization_desc_act,
+            sym=self.quantization_sym
             )
 
         data_calibration_dataset = load_dataset(
@@ -71,12 +71,12 @@ class QwenVLQuantification():
     
         model = GPTQModel.load(
             model_id_or_path=model_path,
-            quantize_config=quantizeConfig,
+            quantize_config=quantizationConfig,
             trust_remote_code=self.trust_remote_code,
-            device=self.quantize_device
+            device=self.quantization_device
             )
         model.quantize(
             calibration_dataset=data_calibration_dataset,
-            batch_size=self.quantize_batch_size
+            batch_size=self.quantization_batch_size
             )
-        model.save(save_dir=quantize_path)
+        model.save(save_dir=quantization_path)
