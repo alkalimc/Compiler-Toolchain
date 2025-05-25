@@ -29,7 +29,7 @@ class EvalPlus():
         if not os.path.exists(evaluation_path):
             os.makedirs(evaluation_path)
 
-        process = subprocess.run(
+        process = subprocess.Popen(
             f"evalplus.evaluate "
             f"--model \"{model_path}\" "
             f"--dataset {self.evaluation_task}",

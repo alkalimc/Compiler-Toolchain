@@ -35,7 +35,7 @@ class Deployment():
             model_path: str = os.path.join(workspace, "Models", self.model_id)
             
             if self.deployment_enforce_eager:
-                process = subprocess.run(
+                process = subprocess.Popen(
                     f"vllm serve {model_path} "
                     f"--max_model_len {self.deployment_max_model_len} "
                     f"--model_args pretrained='{model_path}' "
@@ -54,7 +54,7 @@ class Deployment():
                 for line in process.stdout.splitlines():
                     print(line)
             else:
-                process = subprocess.run(
+                process = subprocess.Popen(
                     f"vllm serve {model_path} "
                     f"--max_model_len {self.deployment_max_model_len} "
                     f"--model_args pretrained='{model_path}' "
@@ -75,7 +75,7 @@ class Deployment():
             model_path: str = os.path.join(workspace, "Models", "Quanted", self.model_id)
 
             if self.deployment_enforce_eager:
-                process = subprocess.run(
+                process = subprocess.Popen(
                     f"vllm serve {model_path} "
                     f"--max_model_len {self.deployment_max_model_len} "
                     f"--model_args pretrained='{model_path}' "
@@ -95,7 +95,7 @@ class Deployment():
                 for line in process.stdout.splitlines():
                     print(line)
             else:
-                process = subprocess.run(
+                process = subprocess.Popen(
                     f"vllm serve {model_path} "
                     f"--max_model_len {self.deployment_max_model_len} "
                     f"--model_args pretrained='{model_path}' "
