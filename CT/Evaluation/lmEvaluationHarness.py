@@ -4,7 +4,6 @@
 from dataclasses import dataclass, field
 import os
 import subprocess
-import L
 
 @dataclass
 class LmEvaluationHarness():
@@ -139,5 +138,5 @@ class LmEvaluationHarness():
                     text=True
                 )
 
-        for line in process.stdout.splitlines():
+        for line in process.stdout:
             print(line)

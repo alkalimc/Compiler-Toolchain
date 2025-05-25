@@ -39,5 +39,5 @@ class EvalPlus():
             text=True
         )
 
-        for line in process.stdout.splitlines():
+        for line in process.stdout:
             print(line)

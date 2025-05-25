@@ -50,9 +50,6 @@ class Deployment():
                     stderr=subprocess.PIPE,
                     text=True
                 )
-
-                for line in process.stdout.splitlines():
-                    print(line)
             else:
                 process = subprocess.Popen(
                     f"vllm serve {model_path} "
@@ -69,8 +66,6 @@ class Deployment():
                     text=True
                 )
 
-                for line in process.stdout.splitlines():
-                    print(line)
         elif self.model_type == "gptq":
             model_path: str = os.path.join(workspace, "Models", "Quanted", self.model_id)
 
@@ -91,9 +86,6 @@ class Deployment():
                     stderr=subprocess.PIPE,
                     text=True
                 )
-
-                for line in process.stdout.splitlines():
-                    print(line)
             else:
                 process = subprocess.Popen(
                     f"vllm serve {model_path} "
@@ -110,6 +102,6 @@ class Deployment():
                     stderr=subprocess.PIPE,
                     text=True
                 )
-
-                for line in process.stdout.splitlines():
-                    print(line)
+                
+        for line in process.stdout:
+            print(line)

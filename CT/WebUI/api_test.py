@@ -13,7 +13,10 @@ from pathlib import Path
 import contextlib
 import re
 
-LOG_DIR = "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/WebUI/logs"
+WORKSPACE_ROOT = "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain"
+sys.path.insert(0, WORKSPACE_ROOT)
+os.chdir(WORKSPACE_ROOT)
+LOG_DIR = os.path.join(WORKSPACE_ROOT, "CT", "WebUI", "logs")
 ERROR_LOG = os.path.join(LOG_DIR, "quantization_errors.log")
 PROGRESS_LOG = os.path.join(LOG_DIR, "quantization_progress.log") 
 EVALUATION_LOG = os.path.join(LOG_DIR, "evaluation_progress.log")
@@ -78,18 +81,17 @@ def quantification_entrypoint(model_id, log_path, is_vl_model):
     后端包装函数，用于捕获quantization输出并写入日志。
     """
     try:
-        os.makedirs("/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/WebUI/gptq_log", exist_ok=True)
-        os.chdir("/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/WebUI/gptq_log")
+        gptq_log_dir = os.path.join(WORKSPACE_ROOT, "CT", "WebUI", "gptq_log")
+        os.makedirs(gptq_log_dir, exist_ok=True)
+        os.chdir(gptq_log_dir)
     
         with open(log_path, 'a') as f:
             with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
-                # 动态导入，避免多进程冲突
-                sys.path.append("/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/Example/Quantization")
                 if is_vl_model:
-                    from qwenVLQuantization import simpleQuantization
+                    from Example.Quantization.qwenVLQuantization import simpleQuantization
                     print(f"[INFO] 启动VL模型量化: {model_id}")
                 else:
-                    from quantization import simpleQuantization
+                    from Example.Quantization.quantization import simpleQuantization
                     print(f"[INFO] 启动普通模型量化: {model_id}")
                     
                 simpleQuantization(model_id)
@@ -136,28 +138,26 @@ def run_quantification(model_name):
 def evaluation_entrypoint(model_name, eval_method, eval_tasks, log_path, is_quantized=False):
     """
     评估任务入口：根据是否量化，调用不同的路径与模块。
-    新增 eval_tasks 参数接收评估任务列表
     """
     try:
         with open(log_path, 'a') as f:
             with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
                 if is_quantized:
-                    sys.path.insert(0, "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/Example/Evaluation/GPTQ")
                     print(f"[INFO] 使用 GPTQ 评估模块评估量化模型: {model_name}")
+                    if eval_method == "evalPlus":
+                        from Example.Evaluation.GPTQ.evalPlus import simpleEvaluation
+                    else:  # lmEvalHarness
+                        from Example.Evaluation.GPTQ.lmEvaluationHarness import simpleEvaluation
                 else:
-                    sys.path.insert(0, "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/Example/Evaluation")
                     print(f"[INFO] 使用原始评估模块评估模型: {model_name}")
-
-                # 根据评估方法导入不同模块
-                if eval_method == "evalPlus":
-                    from evalPlus import simpleEvaluation
-                else:  # imEvalHarness
-                    from lmEvaluationHarness import simpleEvaluation
+                    if eval_method == "evalPlus":
+                        from Example.Evaluation.evalPlus import simpleEvaluation
+                    else:  # lmEvalHarness
+                        from Example.Evaluation.lmEvaluationHarness import simpleEvaluation
 
                 # 遍历执行所有选中的评估任务
                 for task in eval_tasks:
                     print(f"[INFO] 开始评估任务: {task}")
-                    print(model_name) 
                     simpleEvaluation(model_id=model_name, evaluation_task=task)
                     print(f"[INFO] 评估任务完成: {task}")
 
@@ -166,7 +166,6 @@ def evaluation_entrypoint(model_name, eval_method, eval_tasks, log_path, is_quan
     except Exception as e:
         with open(log_path, 'a') as f:
             f.write(f"[ERROR] 评估异常: {e}\n")
-
 
 def is_eval_running():
     global current_eval_process
