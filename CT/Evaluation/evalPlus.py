@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass, field
 import os
-from evalplus import evaluate
+import subprocess
 
 @dataclass
 class EvalPlus():
@@ -29,7 +29,15 @@ class EvalPlus():
         if not os.path.exists(evaluation_path):
             os.makedirs(evaluation_path)
 
-        evaluation_result = evaluate(
-            dataset=self.evaluation_task,
-            model=model_path
-            )
+        process = subprocess.run(
+            f"evalplus.evaluate "
+            f"--model \"{model_path}\" "
+            f"--dataset {self.evaluation_task}",
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        for line in process.stdout.splitlines():
+            print(line)

@@ -36,7 +36,7 @@ class LmEvaluationHarness():
         if not os.path.exists(evaluation_path):
             os.makedirs(evaluation_path)
 
-        print(subprocess.run(
+        process = subprocess.run(
             f"lm-eval "
             f"--model hf "
             f"--model_args pretrained='{model_path}' "
@@ -44,8 +44,12 @@ class LmEvaluationHarness():
             f"--device {self.evaluation_device} "
             f"--batch_size {self.evaluation_batch_size} "
             f"--trust_remote_code "
-            f"--output_path result > {evaluation_output_path} 2>&1",
+            f"--output_path {evaluation_output_path} 2>&1",
             shell=True,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True
-        ).stdout)
+        )
+
+        for line in process.stdout.splitlines():
+            print(line)

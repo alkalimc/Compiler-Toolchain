@@ -1,64 +1,58 @@
-#!/usr/bin/env python3
-# eval_runner.py - 简化的大模型评估调用脚本
-
 import os
 import sys
-import argparse
-from multiprocessing import Process
+from pathlib import Path
+import multiprocessing
+import torch
 
-# 设置正确的路径
-CT_ROOT = "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain"
-sys.path.insert(0, os.path.join(CT_ROOT, "CT/Example/Evaluation"))
+# 添加 Compiler-Toolchain 到 Python 路径
+toolchain_path = Path("/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain")
+sys.path.append(str(toolchain_path))
 
-def validate_model(model_name):
-    """验证模型是否在支持列表中"""
-    SUPPORTED_MODELS = [
-        "Qwen2.5-7B-Instruct",
-        "Qwen2-7B-Instruct",
-        "DeepSeek-R1-Distill-Qwen-7B",
-        "Qwen2-VL-7B-Instruct",
-        "Qwen2.5-VL-7B-Instruct"
-    ]
-    if model_name not in SUPPORTED_MODELS:
-        raise ValueError(f"不支持的模型: {model_name}\n支持的模型有: {SUPPORTED_MODELS}")
+# 导入 evalPlus 的评估函数
+from Example.Evaluation.evalPlus import simpleEvaluation
 
-def run_evaluation(model_name, eval_framework="EvalPlus"):
-    """运行评估的主函数"""
-    try:
-        from evalPlus import simpleEvaluation
-        
-        # 支持的评估任务
-        TASKS = ["humaneval", "mbpp"]
-        
-        processes = []
-        for task in TASKS:
-            p = Process(target=simpleEvaluation, args=(model_name, task))
+def check_gpu_available():
+    """检查可用的 GPU 并返回数量"""
+    return torch.cuda.device_count()
+
+def run_custom_evaluation(
+    model_ids: list[str],
+    evaluation_framework: str,
+    evaluation_tasks: list[str],
+):
+    """直接调用评估函数，自定义参数"""
+    # 检查 GPU 可用性
+    num_gpus = check_gpu_available()
+    if num_gpus == 0:
+        raise RuntimeError("No GPU available! Please check CUDA installation.")
+
+    print(f"Available GPUs: {num_gpus}")
+
+    # 启动多进程评估
+    multiprocessing.set_start_method("spawn")
+    processes = []
+
+    for model_id in model_ids:
+        for task in evaluation_tasks:
+            p = multiprocessing.Process(
+                target=simpleEvaluation,
+                args=(model_id, task),
+            )
             processes.append(p)
             p.start()
-        
-        for p in processes:
-            p.join()
-            
-    except Exception as e:
-        print(f"评估过程中出错: {str(e)}")
-        sys.exit(1)
+
+    for p in processes:
+        p.join()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="大模型评估调用脚本",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    # === 在这里指定你的参数 ===
+    custom_models = ["Qwen2.5-7B-Instruct"]  # 自定义模型
+    custom_framework = "EvalPlus"  # 评估框架
+    custom_tasks = ["humaneval", "mbpp"]  # 评估任务
+
+    # 运行评估
+    run_custom_evaluation(
+        model_ids=custom_models,
+        evaluation_framework=custom_framework,
+        evaluation_tasks=custom_tasks,
     )
-    parser.add_argument("-m", "--model", required=True, help="要评估的模型名称")
-    parser.add_argument("-f", "--framework", default="EvalPlus", 
-                       choices=["EvalPlus", "lm-evaluation-harness"],
-                       help="使用的评估框架")
-    
-    args = parser.parse_args()
-    
-    try:
-        validate_model(args.model)
-        print(f"开始评估 - 模型: {args.model}, 框架: {args.framework}")
-        run_evaluation(args.model, args.framework)
-    except ValueError as e:
-        print(str(e))
-        sys.exit(1)

@@ -75,7 +75,7 @@ quantization_params = {
 
 def quantification_entrypoint(model_id, log_path, is_vl_model):
     """
-    后端包装函数，用于捕获quantification输出并写入日志。
+    后端包装函数，用于捕获quantization输出并写入日志。
     """
     try:
         os.makedirs("/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/WebUI/gptq_log", exist_ok=True)
@@ -84,15 +84,15 @@ def quantification_entrypoint(model_id, log_path, is_vl_model):
         with open(log_path, 'a') as f:
             with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
                 # 动态导入，避免多进程冲突
-                sys.path.append("/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Example/Quantification")
+                sys.path.append("/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/Example/Quantization")
                 if is_vl_model:
-                    from qwenVLQuantification import simpleQuantification
+                    from qwenVLQuantization import simpleQuantization
                     print(f"[INFO] 启动VL模型量化: {model_id}")
                 else:
-                    from quantification import simpleQuantification
+                    from quantization import simpleQuantization
                     print(f"[INFO] 启动普通模型量化: {model_id}")
                     
-                simpleQuantification(model_id)
+                simpleQuantization(model_id)
 
                 print(f"[INFO] 模型量化完成: {model_id}")
 
@@ -133,30 +133,35 @@ def run_quantification(model_name):
         current_quant_process = None
         raise
 
-def evaluation_entrypoint(model_name, eval_method, log_path, is_quantized=False):
+def evaluation_entrypoint(model_name, eval_method, eval_tasks, log_path, is_quantized=False):
     """
     评估任务入口：根据是否量化，调用不同的路径与模块。
+    新增 eval_tasks 参数接收评估任务列表
     """
     try:
         with open(log_path, 'a') as f:
             with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
-
                 if is_quantized:
-                    sys.path.insert(0, "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Example/Evaluation/GPTQ")
+                    sys.path.insert(0, "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/Example/Evaluation/GPTQ")
                     print(f"[INFO] 使用 GPTQ 评估模块评估量化模型: {model_name}")
                 else:
-                    sys.path.insert(0, "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/CT/Example/Evaluation")
+                    sys.path.insert(0, "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain/Example/Evaluation")
                     print(f"[INFO] 使用原始评估模块评估模型: {model_name}")
 
-                # 模块导入根据评估方法切换
-                if eval_method in ["humaneval", "mbpp"]:
+                # 根据评估方法导入不同模块
+                if eval_method == "evalPlus":
                     from evalPlus import simpleEvaluation
-                else:
+                else:  # imEvalHarness
                     from lmEvaluationHarness import simpleEvaluation
 
-                # 调用评估函数
-                simpleEvaluation(model_id=model_name, evaluation_task=eval_method)
-                print(f"[INFO] 评估完成: {model_name} ({eval_method})")
+                # 遍历执行所有选中的评估任务
+                for task in eval_tasks:
+                    print(f"[INFO] 开始评估任务: {task}")
+                    print(model_name) 
+                    simpleEvaluation(model_id=model_name, evaluation_task=task)
+                    print(f"[INFO] 评估任务完成: {task}")
+
+                print(f"[INFO] 所有评估任务完成: {model_name}")
 
     except Exception as e:
         with open(log_path, 'a') as f:
@@ -167,9 +172,9 @@ def is_eval_running():
     global current_eval_process
     return current_eval_process is not None and current_eval_process.is_alive()
 
-def run_evaluation(model_name, eval_method, is_quantized=False):
+def run_evaluation(model_name, eval_method, eval_tasks, is_quantized=False):
     """
-    启动评估进程，根据是否量化，选择正确路径和 model_id。
+    启动评估进程，新增 eval_tasks 参数
     """
     global current_eval_process
 
@@ -177,7 +182,7 @@ def run_evaluation(model_name, eval_method, is_quantized=False):
         with open(EVALUATION_LOG, 'w') as f:
             f.write("")
 
-        log_error(f"准备评估: {model_name}, 量化模型: {is_quantized}", "eval")
+        log_error(f"准备评估: {model_name}, 量化模型: {is_quantized}, 任务: {eval_tasks}", "eval")
 
         # 对量化模型进行 ID 补全
         full_model_id = model_name
@@ -186,7 +191,7 @@ def run_evaluation(model_name, eval_method, is_quantized=False):
 
         current_eval_process = multiprocessing.Process(
             target=evaluation_entrypoint,
-            args=(full_model_id, eval_method, EVALUATION_LOG, is_quantized)
+            args=(full_model_id, eval_method, eval_tasks, EVALUATION_LOG, is_quantized)
         )
         current_eval_process.start()
 
@@ -225,8 +230,9 @@ def post_api():
 
         # 1. 处理评估启动请求
         if data.get("start_evaluation"):
-            if not all(k in data for k in ["model_name", "eval_method"]):
-                error_msg = "缺少模型名称或评估方法参数"
+            required_fields = ["model_name", "eval_method", "eval_tasks"]
+            if not all(k in data for k in required_fields):
+                error_msg = f"缺少必要参数，需要: {required_fields}"
                 log_error(error_msg, "backend")
                 return jsonify({'success': False, 'message': error_msg}), 400
             
@@ -238,13 +244,19 @@ def post_api():
                 
                 # 启动新评估进程
                 is_quantized = data.get("is_quantized", False)
-                pid = run_evaluation(data["model_name"], data["eval_method"], is_quantized=is_quantized)
+                pid = run_evaluation(
+                    data["model_name"], 
+                    data["eval_method"],
+                    data["eval_tasks"],  # 新增任务列表参数
+                    is_quantized=is_quantized
+                )
                 
                 return jsonify({
                     'success': True,
                     'message': '评估进程已启动',
                     'pid': pid,
-                    'eval_method': data["eval_method"]
+                    'eval_method': data["eval_method"],
+                    'eval_tasks': data["eval_tasks"]  # 返回任务列表用于确认
                 })
             except Exception as e:
                 error_msg = f"评估进程启动失败: {str(e)}"

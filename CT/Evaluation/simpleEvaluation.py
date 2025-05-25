@@ -31,14 +31,14 @@ class SimpleEvaluation():
 
     def __post_init__(self):
         if self.evaluation_framework == "lm-evaluation-harness":
-            LmEvaluationHarness(
+            lmEvaluationHarness = LmEvaluationHarness(
                 model_id=self.model_id,
                 evaluation_task=self.evaluation_task,
                 evaluation_device=self.evaluation_device,
                 evaluation_batch_size=self.evaluation_batch_size
             )
         elif self.evaluation_framework == "EvalPlus":
-            EvalPlus(
+            evalPlus = EvalPlus(
                 model_id=self.model_id,
                 evaluation_task=self.evaluation_task,
                 evaluation_device=self.evaluation_device,
