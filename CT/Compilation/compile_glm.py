@@ -7,6 +7,7 @@ import logging
 import time
 import torch
 import torch.nn as nn
+import argparse
 from gptqmodel import GPTQModel
 from gptqmodel.utils.backend import BACKEND
 from gptqmodel.nn_modules.qlinear.torch import TorchQuantLinear
@@ -32,7 +33,7 @@ class GlmCompiler:
 
     def __post_init__(self):
         self._setup()
-        self.model = get_llm(self.model_name)
+        self.model = self.get_llm(self.model_name)
         self.layers = self.model.transformer.encoder.layers
 
     def _setup(self):

@@ -30,7 +30,6 @@ class EagerDeployment():
         process = subprocess.Popen(
             f"vllm serve {model_path} "
             f"--max_model_len {self.deployment_max_model_len} "
-            f"--model_args pretrained='{model_path}' "
             f"--gpu-memory-utilization {self.deployment_gpu_memory_utilization} "
             f"--enforce-eager "
             f"--host {self.deployment_host} "

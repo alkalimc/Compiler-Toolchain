@@ -6,6 +6,7 @@ import os
 import logging
 import torch
 import torch.nn as nn
+import argparse
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from gptqmodel import GPTQModel
 from gptqmodel.utils.backend import BACKEND
@@ -16,6 +17,10 @@ class QwenCompiler:
     # Compilation parameters
     quantize_model: str = field(
         metadata={"help": "Path to the quantized model directory"}
+    )
+    compiled_model: str = field(
+        default="",
+        metadata={"help": "Path to the compiled model directory"}
     )
     wbits: int = field(
         default=4,
@@ -36,8 +41,8 @@ class QwenCompiler:
 
     def _setup_directories(self):
         """Create required output directories"""
-        self.qweight_dir = os.path.join(self.quantize_model, 'compile/qwen2_qweight_bin')
-        self.fp16_weight_dir = os.path.join(self.quantize_model, 'compile/qwen2_fp16_weight_bin')
+        self.qweight_dir = os.path.join(self.compiled_model, 'compile/qwen2_qweight_bin')
+        self.fp16_weight_dir = os.path.join(self.compiled_model, 'compile/qwen2_fp16_weight_bin')
         os.makedirs(self.qweight_dir, exist_ok=True)
         os.makedirs(self.fp16_weight_dir, exist_ok=True)
 
@@ -46,7 +51,7 @@ class QwenCompiler:
         if not os.path.exists(self.quantize_model):
             raise ValueError(f"Quantized model directory not found: {self.quantize_model}")
 
-    def out_bin(self, data_pt, bin_name):
+    def _out_bin(self, data_pt, bin_name):
         """Save tensor data to binary file"""
         if data_pt.dtype == torch.float32:
             data_pt = data_pt.to(torch.float16)
@@ -110,17 +115,19 @@ class QwenCompiler:
         for name, param in model.state_dict().items():
             logging.debug(f"Processing parameter: {name}")
             
+            
             if "qweight" in name:
-                self._process_qweight(name, param)
+                self.process_qweight(name, param)
             elif "scales" in name:
-                self._process_scales(name, param)
-                self._handle_missing_bias(name, model)
+                self.process_scales(name, param)
+                self.handle_missing_bias(name, model)
+            
             elif "bias" in name:
-                self._process_bias(name, param)
+                self.process_bias(name, param)
             elif "norm" in name:
-                self._process_norm_layers(name, param)
+                self.process_norm_layers(name, param)
             elif "embed_tokens" in name:
-                self._process_embeddings(name, param)
+                self.process_embeddings(name, param)
 
     def handle_missing_bias(self, name, model):
         """Handle missing bias parameters"""
@@ -133,22 +140,16 @@ class QwenCompiler:
 
     @classmethod
     def from_args(cls):
-        """Create instance from command line arguments"""
-        parser = argparse.ArgumentParser(description="Model Compilation Pipeline")
-        fields = cls.__dataclass_fields__
-        
-        for field_name, field_obj in fields.items():
-            parser.add_argument(
-                f"--{field_name}",
-                type=type(getattr(cls, field_name)),
-                default=field_obj.default,
-                help=field_obj.metadata.get("help", ""),
-                choices=field_obj.metadata.get("choices", None)
-            )
-            
+        """参数解析适配器"""
+        parser = argparse.ArgumentParser(description="Model Compiler")
+        parser.add_argument("--compiled_model", required=True)
+        parser.add_argument("--quantize_model", default="")
+        parser.add_argument("--wbits", type=int, default=4)
+        parser.add_argument("--group_size", type=int, default=128)
+        parser.add_argument("--device", default="cuda:0")
         args = parser.parse_args()
         return cls(**vars(args))
 
 if __name__ == "__main__":
-    compiler = ModelCompiler.from_args()
+    compiler = QwenCompiler.from_args()
     compiler.compile_model()
