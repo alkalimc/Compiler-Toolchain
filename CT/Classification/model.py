@@ -15,7 +15,7 @@ class ModelClassification():
         if 'VL' in self.model_id:
             self.model_classification = "QwenVL"
 
-    def modelID(self) -> str:
+    def modelType(self) -> str:
         return self.model_type
     def modelClassification(self) -> str:
         return self.model_classification

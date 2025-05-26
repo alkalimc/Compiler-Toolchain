@@ -10,9 +10,9 @@ from CT.Quantization.qwenVLQuantization import QwenVLQuantization
 
 @dataclass
 class SimpleQuantization():
-    model_type: str = field(default=None, metadata={"choices": [
-        None,
-        "Qwen_VL"
+    model_type: str = field(default="Normal", metadata={"choices": [
+        "Normal",
+        "QwenVL"
         ]})
     model_id: str = field(default="Qwen2.5-7B-Instruct")
     data_id: str = field(default="allenai-c4")
@@ -21,7 +21,7 @@ class SimpleQuantization():
     quantization_device: Optional[Union[str, torch.device]] = field(default=torch.device("cuda:0"))
 
     def __post_init__(self):
-        if self.model_type == None:
+        if self.model_type == "Normal":
             quantization = Quantization(
                 model_id=self.model_id,
                 data_id=self.data_id,
@@ -29,7 +29,7 @@ class SimpleQuantization():
                 quantization_batch_size=self.quantization_batch_size,
                 quantization_device=self.quantization_device
                 )
-        elif self.model_type == "Qwen_VL":
+        elif self.model_type == "QwenVL":
             qwenVLQuantization = QwenVLQuantization(
                 model_id=self.model_id,
                 data_id=self.data_id,

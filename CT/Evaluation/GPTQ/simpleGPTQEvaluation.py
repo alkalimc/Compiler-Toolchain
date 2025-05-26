@@ -23,16 +23,14 @@ class SimpleGPTQEvaluation():
         "GPQA",
         "BOOLQ",
         "OPENBOOKQA",
-        "HUMANEVAL",
+        "HUMAN",
         "MBPP"
         ]})
     evaluation_batch_size: int = field(default=1, metadata={"min_value": 1})
         
     def __post_init__(self):
-        if self.evaluation_task == "HUMANEVAL":
-            self.evaluation_task = "HUMAN"
 
-        if self.evaluation_framework == "LM_EVAL":
+        if self.evaluation_framework == "lm-evaluation-harness":
             for lm_eval in EVAL.LM_EVAL:
                 if self.evaluation_task == lm_eval.name:
                     evaluation_task = lm_eval
@@ -40,7 +38,7 @@ class SimpleGPTQEvaluation():
                 model_id=self.model_id,
                 evaluation_batch_size=self.evaluation_batch_size,
                 evaluation_task=evaluation_task)
-        elif self.evaluation_framework == "EVALPLUS":
+        elif self.evaluation_framework == "EvalPlus":
             for evalPlus in EVAL.EVALPLUS:
                 if self.evaluation_task == evalPlus.name:
                     evaluation_task = evalPlus

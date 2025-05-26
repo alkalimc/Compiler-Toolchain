@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data',
 from CT.Scheduler.GPU.simpleScheduler import SimpleScheduler
 from CT.Quantization.simpleQuantization import SimpleQuantization
 
-model_type: str = "Qwen"
+model_type: str = "Normal"
 model_ids: list[str]  = [
     "Qwen2.5-7B-Instruct",
     "Qwen2-7B-Instruct",

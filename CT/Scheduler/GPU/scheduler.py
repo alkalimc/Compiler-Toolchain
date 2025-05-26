@@ -10,14 +10,14 @@ class Scheduler():
     username: str = field(default="Compiler-Toolchain")
     
     scheduler_device_map: dict = field(default_factory=lambda: {
-        "4090": [0, 1, 2, 3, 5],
-        "H100": [4, 6]
+        "4090": [0, 1, 2, 3, 5, 6],
+        "H100": [4,]
     })
     scheduler_gpu_type: str = field(default="4090", metadata={"choices": [
         "4090",
         "H100"
         ]})
-    scheduler_minmum_free_vram: int = field(default=22, metadata={"min_value": 1})
+    scheduler_minmum_free_vram: float = field(default=22, metadata={"min_value": 0.01})
     scheduler_check_cycle_time: int = field(default=64, metadata={"min_value": 1})
     scheduler_remove_lock_time: int = field(default=60, metadata={"min_value": 1})
     

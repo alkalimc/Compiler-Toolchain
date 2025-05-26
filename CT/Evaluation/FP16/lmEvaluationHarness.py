@@ -24,10 +24,6 @@ class LmEvaluationHarness():
         ]})
     evaluation_device: str = field(default="cuda:0")
     evaluation_batch_size: int = field(default=4, metadata={"min_value": 1})
-    evaluation_backend: str = field(default=None, metadata={"choices": [
-        "causal",
-        "seq2seq"
-        ]})
 
     trust_remote_code: bool = field(default=True)
 
@@ -41,102 +37,34 @@ class LmEvaluationHarness():
             os.makedirs(evaluation_path)
 
         if self.trust_remote_code:
-            if self.evaluation_backend == None:
-                process = subprocess.Popen(
-                    f"lm-eval "
-                    f"--model hf "
-                    f"--model_args pretrained='{model_path}' "
-                    f"--tasks {self.evaluation_task} "
-                    f"--device {self.evaluation_device} "
-                    f"--batch_size {self.evaluation_batch_size} "
-                    f"--trust_remote_code "
-                    f"--output_path {evaluation_output_path} 2>&1",
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-
-            elif self.evaluation_backend == "causal":
-                process = subprocess.Popen(
-                    f"lm-eval "
-                    f"--model hf "
-                    f"--model_args pretrained='{model_path}' "
-                    f"--tasks {self.evaluation_task} "
-                    f"--device {self.evaluation_device} "
-                    f"--batch_size {self.evaluation_batch_size} "
-                    f"--trust_remote_code "
-                    f"--backend causal "
-                    f"--output_path {evaluation_output_path} 2>&1",
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-
-            elif self.evaluation_backend == "seq2seq":
-                process = subprocess.Popen(
-                    f"lm-eval "
-                    f"--model hf "
-                    f"--model_args pretrained='{model_path}' "
-                    f"--tasks {self.evaluation_task} "
-                    f"--device {self.evaluation_device} "
-                    f"--batch_size {self.evaluation_batch_size} "
-                    f"--trust_remote_code "
-                    f"--backend seq2seq "
-                    f"--output_path {evaluation_output_path} 2>&1",
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
+            process = subprocess.Popen(
+                f"lm-eval "
+                f"--model hf "
+                f"--model_args pretrained='{model_path}' "
+                f"--tasks {self.evaluation_task} "
+                f"--device {self.evaluation_device} "
+                f"--batch_size {self.evaluation_batch_size} "
+                f"--trust_remote_code "
+                f"--output_path {evaluation_output_path} 2>&1",
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
         else:
-            if self.evaluation_backend == None:
-                process = subprocess.Popen(
-                    f"lm-eval "
-                    f"--model hf "
-                    f"--model_args pretrained='{model_path}' "
-                    f"--tasks {self.evaluation_task} "
-                    f"--device {self.evaluation_device} "
-                    f"--batch_size {self.evaluation_batch_size} "
-                    f"--output_path {evaluation_output_path} 2>&1",
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-
-            elif self.evaluation_backend == "causal":
-                process = subprocess.Popen(
-                    f"lm-eval "
-                    f"--model hf "
-                    f"--model_args pretrained='{model_path}' "
-                    f"--tasks {self.evaluation_task} "
-                    f"--device {self.evaluation_device} "
-                    f"--batch_size {self.evaluation_batch_size} "
-                    f"--backend causal "
-                    f"--output_path {evaluation_output_path} 2>&1",
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-
-            elif self.evaluation_backend == "seq2seq":
-                process = subprocess.Popen(
-                    f"lm-eval "
-                    f"--model hf "
-                    f"--model_args pretrained='{model_path}' "
-                    f"--tasks {self.evaluation_task} "
-                    f"--device {self.evaluation_device} "
-                    f"--batch_size {self.evaluation_batch_size} "
-                    f"--backend seq2seq "
-                    f"--output_path {evaluation_output_path} 2>&1",
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
+            process = subprocess.Popen(
+                f"lm-eval "
+                f"--model hf "
+                f"--model_args pretrained='{model_path}' "
+                f"--tasks {self.evaluation_task} "
+                f"--device {self.evaluation_device} "
+                f"--batch_size {self.evaluation_batch_size} "\
+                f"--output_path {evaluation_output_path} 2>&1",
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
 
         for line in process.stdout:
             print(line)

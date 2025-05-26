@@ -14,8 +14,8 @@ class SimpleEvaluation():
         ]})
 
     evaluation_framework: str = field(default="lm-evaluation-harness", metadata={"choices": [
-        "LM_EVAL",
-        "EVALPLUS"
+        "lm-evaluation-harness",
+        "EvalPlus"
         ]})
     evaluation_task: str = field(default="arc_easy", metadata={"choices": [
         "arc_easy",
@@ -32,10 +32,6 @@ class SimpleEvaluation():
         ]})
     evaluation_device: str = field(default="cuda:0")
     evaluation_batch_size: int = field(default=4, metadata={"min_value": 1})
-    evaluation_backend: str = field(default=None, metadata={"choices": [
-        "causal",
-        "seq2seq"
-        ]})
 
     def __post_init__(self):
         if self.model_type == "FP16":
@@ -44,10 +40,12 @@ class SimpleEvaluation():
                 evaluation_framework=self.evaluation_framework,
                 evaluation_task=self.evaluation_task,
                 evaluation_device=self.evaluation_device,
-                evaluation_batch_size=self.evaluation_batch_size,
-                evaluation_backend=self.evaluation_backend
+                evaluation_batch_size=self.evaluation_batch_size
             )
-        elif self.model_type == "GPTQ":
+        elif self.model_type == "GPTQ": 
+            if self.evaluation_task == "humaneval":
+                self.evaluation_task = "human"
+
             simpleGPTQEvaluation = SimpleGPTQEvaluation(
                 model_id=self.model_id,
                 evaluation_framework=self.evaluation_framework,
