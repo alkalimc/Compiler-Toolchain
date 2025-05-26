@@ -33,6 +33,7 @@ evaluation_tasks:  list[str] = [
 evaluation_batch_size: int = 4
 
 def simpleEvaluation(model_id: str, evaluation_task: str):
+    try: 
         simpleScheduler = SimpleScheduler()
         torch.cuda.set_device(simpleScheduler.gpuSelected())
         simpleEvaluation = SimpleEvaluation(
@@ -42,6 +43,9 @@ def simpleEvaluation(model_id: str, evaluation_task: str):
             evaluation_device=torch.device(f"cuda:{simpleScheduler.gpuSelected()}"),
             evaluation_batch_size=evaluation_batch_size
         )
+    except Exception as e:
+        print(f"{model_id} Evaluation Error, Reason: {e}")
+        return
     
 def main():
     multiprocessing.set_start_method("spawn")

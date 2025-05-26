@@ -27,6 +27,7 @@ class EagerDeployment():
         deployment_served_model_name: str = self.model_id
         model_path: str = os.path.join(workspace, "Models", self.model_id)
 
+        print("Done")
         process = subprocess.Popen(
             f"vllm serve {model_path} "
             f"--max_model_len {self.deployment_max_model_len} "
