@@ -9,7 +9,7 @@ import multiprocessing
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data', 'disk0', 'Workspace', 'Compiler-Toolchain', 'Compiler-Toolchain')))
 from CT.Scheduler.GPU.simpleScheduler import SimpleScheduler
-from CT.Evaluation.GPTQ.simpleEvaluation import SimpleEvaluation
+from CT.Evaluation.GPTQ.simpleGPTQEvaluation import SimpleEvaluation
 
 model_ids: list[str] = [
     "Qwen2.5-7B-Instruct-W4A16-gptq",

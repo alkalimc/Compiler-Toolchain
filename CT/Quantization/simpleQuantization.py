@@ -10,8 +10,8 @@ from CT.Quantization.qwenVLQuantization import QwenVLQuantization
 
 @dataclass
 class SimpleQuantization():
-    model_type: str = field(default="Qwen", metadata={"choices": [
-        "Qwen",
+    model_type: str = field(default=None, metadata={"choices": [
+        None,
         "Qwen_VL"
         ]})
     model_id: str = field(default="Qwen2.5-7B-Instruct")
@@ -21,7 +21,7 @@ class SimpleQuantization():
     quantization_device: Optional[Union[str, torch.device]] = field(default=torch.device("cuda:0"))
 
     def __post_init__(self):
-        if self.model_type == "Qwen":
+        if self.model_type == None:
             quantization = Quantization(
                 model_id=self.model_id,
                 data_id=self.data_id,
