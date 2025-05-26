@@ -3,43 +3,44 @@
 
 import os
 import sys
-import torch
+import time
 import subprocess
 import multiprocessing
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data', 'disk0', 'Workspace', 'Compiler-Toolchain', 'Compiler-Toolchain')))
 from CT.Scheduler.GPU.simpleScheduler import SimpleScheduler
-from CT.Evaluation.GPTQ.simpleGPTQEvaluation import SimpleEvaluation
+from CT.Evaluation.simpleEvaluation import SimpleEvaluation
 
 model_ids: list[str] = [
     "Qwen2.5-7B-Instruct-W4A16-gptq",
-    "Qwen2-7B-Instruct-W4A16-gptq",
-    "DeepSeek-R1-Distill-Qwen-7B-W4A16-gptq",
-    "Qwen2-VL-7B-Instruct-W4A16-gptq",
-    "Qwen2.5-VL-7B-Instruct-W4A16-gptq"
+#    "Qwen2-7B-Instruct-W4A16-gptq",
+#    "DeepSeek-R1-Distill-Qwen-7B-W4A16-gptq",
+#    "Qwen2-VL-7B-Instruct-W4A16-gptq",
+#    "Qwen2.5-VL-7B-Instruct-W4A16-gptq"
 ]
-evaluation_framework: str = "LM_EVAL"
+model_type: str = "GPTQ"
+evaluation_framework: str = "lm-evaluation-harness"
 evaluation_tasks:  list[str] = [
-    "ARC_EASY",
-    "ARC_CHALLENGE",
-    "GSM8K_COT",
-    "GSM8K_PLATINUM_COT",
-    "HELLASWAG",
-    "MMLU",
-    "GPQA",
-    "BOOLQ",
-    "OPENBOOKQA"
+    "arc_easy",
+    "arc_challenge",
+    "gsm8k_cot",
+    "gsm8k_platinum_cot",
+    "hellaswag",
+    "mmlu",
+    "gpqa",
+    "boolq",
+    "openbookqa"
 ]
 evaluation_batch_size: int = 1
 
 def simpleEvaluation(model_id: str, evaluation_task: str):
-    try: 
+    try:
         simpleScheduler = SimpleScheduler()
         os.environ["CUDA_VISIBLE_DEVICES"] = str(simpleScheduler.gpuSelected())
-        torch.cuda.set_device(simpleScheduler.gpuSelected())
         print(f"\nCUDA_VISIBLE_DEVICE = {subprocess.run("echo $CUDA_VISIBLE_DEVICES", shell=True, capture_output=True, text=True).stdout}")
-        simpleEvaluation = SimpleEvaluation(
+        simpleGPTQEvaluation = SimpleEvaluation(
             model_id=model_id,
+            model_type=model_type,
             evaluation_framework=evaluation_framework,
             evaluation_task=evaluation_task,
             evaluation_batch_size=evaluation_batch_size
@@ -57,6 +58,7 @@ def main():
             process = multiprocessing.Process(target=simpleEvaluation, args=(model_id, evaluation_task))
             processes.append(process)
             process.start()
+            time.sleep(64)
 
     for process in processes:
         process.join()

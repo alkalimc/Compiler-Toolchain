@@ -49,7 +49,7 @@ class SimpleEvaluation():
             simpleGPTQEvaluation = SimpleGPTQEvaluation(
                 model_id=self.model_id,
                 evaluation_framework=self.evaluation_framework,
-                evaluation_task=self.evaluation_task.upper,
+                evaluation_task=self.evaluation_task.upper(),
                 evaluation_device=self.evaluation_device,
                 evaluation_batch_size=self.evaluation_batch_size
             )

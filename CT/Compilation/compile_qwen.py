@@ -53,7 +53,7 @@ class QwenCompiler:
 
     def _out_bin(self, data_pt, bin_name):
         """Save tensor data to binary file"""
-        if data_pt.dtype == torch.float32:
+        if data_pt.dtype != torch.float16:
             data_pt = data_pt.to(torch.float16)
 
         logging.info(f"Saving {bin_name} with shape {data_pt.shape}")

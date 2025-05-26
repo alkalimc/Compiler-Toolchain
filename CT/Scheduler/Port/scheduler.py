@@ -12,8 +12,8 @@ class Scheduler():
     username: str = field(default="Compiler-Toolchain")
     
     scheduler_port: list[int] = field(default_factory=lambda: list(range(1024, 49151)))
-    scheduler_check_cycle_time: int = field(default=64, metadata={"min_value": 1})
-    scheduler_remove_lock_time: int = field(default=60, metadata={"min_value": 1})
+    scheduler_check_cycle_time: int = field(default=16, metadata={"min_value": 1})
+    scheduler_remove_lock_time: int = field(default=600, metadata={"min_value": 1})
     port_selected: int = 0
     
     def port_status(self, port: int, scheduler_lock_path: str) -> bool:

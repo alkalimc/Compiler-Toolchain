@@ -25,7 +25,7 @@ class LmEvaluationHarness():
 
         if not os.path.exists(evaluation_path):
             os.makedirs(evaluation_path)
-
+            
         evaluation_result = GPTQModel.eval(
             model_or_id_or_path=model_path,
             framework=self.evaluation_framework,

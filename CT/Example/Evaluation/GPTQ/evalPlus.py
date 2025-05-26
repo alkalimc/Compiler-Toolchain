@@ -3,7 +3,7 @@
 
 import os
 import sys
-import torch
+import time
 import subprocess
 import multiprocessing
 
@@ -18,10 +18,10 @@ model_ids: list[str] = [
     "Qwen2-VL-7B-Instruct-W4A16-gptq",
     "Qwen2.5-VL-7B-Instruct-W4A16-gptq"
 ]
-evaluation_framework: str = "EVALPLUS"
+evaluation_framework: str = "EvalPlus"
 evaluation_tasks:  list[str] = [
-    "HUMAN",
-    "MBPP"
+    "humaneval",
+    "mbpp"
 ]
 evaluation_batch_size: int = 1
 
@@ -29,7 +29,6 @@ def simpleEvaluation(model_id: str, evaluation_task: str):
     try: 
         simpleScheduler = SimpleScheduler()
         os.environ["CUDA_VISIBLE_DEVICES"] = str(simpleScheduler.gpuSelected())
-        torch.cuda.set_device(simpleScheduler.gpuSelected())
         print(f"\nCUDA_VISIBLE_DEVICE = {subprocess.run("echo $CUDA_VISIBLE_DEVICES", shell=True, capture_output=True, text=True).stdout}")
         simpleEvaluation = SimpleEvaluation(
             model_id=model_id,
@@ -50,6 +49,7 @@ def main():
             process = multiprocessing.Process(target=simpleEvaluation, args=(model_id, evaluation_task))
             processes.append(process)
             process.start()
+            time.sleep(64)
 
     for process in processes:
         process.join()

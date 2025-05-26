@@ -10,7 +10,7 @@ class SimpleScheduler():
         "4090",
         "H100"
         ]})
-    scheduler_minmum_free_vram: float = field(default=22, metadata={"min_value": 0.01})
+    scheduler_minmum_free_vram: float = field(default=22.0, metadata={"min_value": 0.01})
     gpu_selected: int = 0
     
     def __post_init__(self):
