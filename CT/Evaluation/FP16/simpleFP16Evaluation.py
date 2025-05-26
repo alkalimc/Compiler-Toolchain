@@ -2,16 +2,12 @@
 # Copyright 2024- alkali. All Rights Reserved.
 
 from dataclasses import dataclass, field
-from CT.Evaluation.FP16.simpleFP16Evaluation import SimpleFP16Evaluation
-from CT.Evaluation.GPTQ.simpleGPTQEvaluation import SimpleGPTQEvaluation
+from CT.Evaluation.FP16.lmEvaluationHarness import LmEvaluationHarness
+from CT.Evaluation.FP16.evalPlus import EvalPlus
 
 @dataclass
-class SimpleEvaluation():
+class SimpleFP16Evaluation():
     model_id: str = field(default="Qwen2.5-7B-Instruct")
-    model_type: str = field(default="FP16", metadata={"choices": [
-        "FP16",
-        "GPTQ"
-        ]})
 
     evaluation_framework: str = field(default="lm-evaluation-harness", metadata={"choices": [
         "LM_EVAL",
@@ -38,19 +34,17 @@ class SimpleEvaluation():
         ]})
 
     def __post_init__(self):
-        if self.model_type == "FP16":
-            simpleFP16Evaluation = SimpleFP16Evaluation(
+        if self.evaluation_framework == "LM_EVAL":
+            lmEvaluationHarness = LmEvaluationHarness(
                 model_id=self.model_id,
-                evaluation_framework=self.evaluation_framework,
                 evaluation_task=self.evaluation_task,
                 evaluation_device=self.evaluation_device,
                 evaluation_batch_size=self.evaluation_batch_size,
                 evaluation_backend=self.evaluation_backend
             )
-        elif self.model_type == "GPTQ":
-            simpleGPTQEvaluation = SimpleGPTQEvaluation(
+        elif self.evaluation_framework == "EVALPLUS":
+            evalPlus = EvalPlus(
                 model_id=self.model_id,
-                evaluation_framework=self.evaluation_framework,
                 evaluation_task=self.evaluation_task,
                 evaluation_device=self.evaluation_device,
                 evaluation_batch_size=self.evaluation_batch_size

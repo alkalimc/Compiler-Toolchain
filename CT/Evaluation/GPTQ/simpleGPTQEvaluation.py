@@ -7,8 +7,8 @@ from CT.Evaluation.GPTQ.lmEvaluationHarness import LmEvaluationHarness
 from CT.Evaluation.GPTQ.evalPlus import EvalPlus
 
 @dataclass
-class SimpleEvaluation():
-    model_id: str = field(default="Qwen2.5-7B-Instruct")
+class SimpleGPTQEvaluation():
+    model_id: str = field(default="Qwen2.5-7B-Instruct-W4A16-gptq")
     evaluation_framework: str = field(default="LM_EVAL", metadata={"choices": [
         "LM_EVAL",
         "EVALPLUS"

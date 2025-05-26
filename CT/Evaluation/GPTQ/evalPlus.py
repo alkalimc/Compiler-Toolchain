@@ -9,7 +9,7 @@ from gptqmodel.utils.eval import EVAL
 @dataclass
 class EvalPlus():
     username: str = field(default="Compiler-Toolchain")
-    model_id: str = field(default="Qwen2.5-7B-Instruct-W4A16-GPTQ")
+    model_id: str = field(default="Qwen2.5-7B-Instruct-W4A16-gptq")
     
     evaluation_framework: EVAL = field(default=EVAL.EVALPLUS)
     evaluation_task: EVAL.LM_EVAL = field(default=EVAL.EVALPLUS.HUMAN)

@@ -10,7 +10,7 @@ class SimpleDeployment():
     model_id: str = field(default="Qwen2.5-7B-Instruct")
     model_type: str = field(default="FP16", metadata={"choices": [
         "FP16",
-        "gptq"
+        "GPTQ"
         ]})
 
     deployment_max_model_len: int = field(default=32768, metadata={"min_value": 1})
@@ -37,7 +37,7 @@ class SimpleDeployment():
                 deployment_port=self.deployment_port,
                 deployment_api_key=self.deployment_api_key
             )
-        elif self.model_type == "gptq":
+        elif self.model_type == "GPTQ":
             simpleGPTQDeployment = SimpleGPTQDeployment(
                 model_id=self.model_id,
                 deployment_max_model_len=self.deployment_max_model_len,
