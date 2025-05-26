@@ -23,12 +23,15 @@ class SimpleGPTQEvaluation():
         "GPQA",
         "BOOLQ",
         "OPENBOOKQA",
-        "HUMAN",
+        "HUMANEVAL",
         "MBPP"
         ]})
     evaluation_batch_size: int = field(default=1, metadata={"min_value": 1})
         
     def __post_init__(self):
+        if self.evaluation_task == "HUMANEVAL":
+            self.evaluation_task = "HUMAN"
+
         if self.evaluation_framework == "LM_EVAL":
             for lm_eval in EVAL.LM_EVAL:
                 if self.evaluation_task == lm_eval.name:
