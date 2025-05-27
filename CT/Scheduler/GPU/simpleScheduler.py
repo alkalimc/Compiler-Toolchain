@@ -7,6 +7,7 @@ from CT.Scheduler.GPU.scheduler import Scheduler
 @dataclass
 class SimpleScheduler():
     scheduler_gpu_type: str = field(default="4090", metadata={"choices": [
+        "CUDA:0"
         "4090",
         "H100"
         ]})

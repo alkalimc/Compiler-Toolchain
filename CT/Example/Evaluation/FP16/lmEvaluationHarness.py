@@ -16,7 +16,8 @@ model_ids: list[str] = [
     "Qwen2-7B-Instruct",
     "DeepSeek-R1-Distill-Qwen-7B",
     "Qwen2-VL-7B-Instruct",
-    "Qwen2.5-VL-7B-Instruct"
+    "Qwen2.5-VL-7B-Instruct",
+    "chatglm3-6b"
 ]
 evaluation_framework: str = "lm-evaluation-harness"
 evaluation_tasks:  list[str] = [
@@ -31,6 +32,8 @@ evaluation_tasks:  list[str] = [
     "openbookqa"
 ]
 evaluation_batch_size: int = 4
+
+process_cycle: int = 16
 
 def simpleEvaluation(model_id: str, evaluation_task: str):
     try: 
@@ -56,7 +59,7 @@ def main():
             process = multiprocessing.Process(target=simpleEvaluation, args=(model_id, evaluation_task))
             processes.append(process)
             process.start()
-            time.sleep(16)
+            time.sleep(process_cycle)
 
     for process in processes:
         process.join()

@@ -16,7 +16,8 @@ model_ids: list[str] = [
     "Qwen2-7B-Instruct-W4A16-gptq",
     "DeepSeek-R1-Distill-Qwen-7B-W4A16-gptq",
     "Qwen2-VL-7B-Instruct-W4A16-gptq",
-    "Qwen2.5-VL-7B-Instruct-W4A16-gptq"
+    "Qwen2.5-VL-7B-Instruct-W4A16-gptq",
+    "chatglm3-6b-W4A16-gptq"
 ]
 
 model_type: str = "GPTQ"

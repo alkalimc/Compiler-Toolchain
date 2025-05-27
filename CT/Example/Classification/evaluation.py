@@ -3,14 +3,12 @@
 
 import os
 import sys
-import torch
-import subprocess
 import multiprocessing
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data', 'disk0', 'Workspace', 'Compiler-Toolchain', 'Compiler-Toolchain')))
 from CT.Classification.evaluation import EvaluationClassification
 
-evaluation_tasks: list[str]  = [
+evaluation_tasks: list[str] = [
     "arc_easy",
     "arc_challenge",
     "gsm8k_cot",

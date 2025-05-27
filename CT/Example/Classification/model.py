@@ -8,17 +8,19 @@ import multiprocessing
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '/data', 'disk0', 'Workspace', 'Compiler-Toolchain', 'Compiler-Toolchain')))
 from CT.Classification.model import ModelClassification
 
-model_ids: list[str]  = [
+model_ids: list[str] = [
     "Qwen2.5-7B-Instruct",
     "Qwen2-7B-Instruct",
     "DeepSeek-R1-Distill-Qwen-7B",
     "Qwen2.5-VL-7B-Instruct",
     "Qwen2-VL-7B-Instruct",
+    "chatglm3-6b",
     "Qwen2.5-7B-Instruct-W4A16-gptq",
     "Qwen2-7B-Instruct-W4A16-gptq",
     "DeepSeek-R1-Distill-Qwen-7B-W4A16-gptq",
     "Qwen2.5-VL-7B-Instruct-W4A16-gptq",
-    "Qwen2-VL-7B-Instruct-W4A16-gptq"
+    "Qwen2-VL-7B-Instruct-W4A16-gptq",
+    "chatglm3-6b-W4A16-gptq"
 ]
 
 def modelClassification(model_id: str):

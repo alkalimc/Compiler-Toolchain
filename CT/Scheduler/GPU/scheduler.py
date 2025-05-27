@@ -10,10 +10,12 @@ class Scheduler():
     username: str = field(default="Compiler-Toolchain")
     
     scheduler_device_map: dict = field(default_factory=lambda: {
+        "CUDA:0": [0,],
         "4090": [0, 1, 2, 3, 5, 6],
         "H100": [4,]
     })
     scheduler_gpu_type: str = field(default="4090", metadata={"choices": [
+        "CUDA:0",
         "4090",
         "H100"
         ]})
