@@ -31,7 +31,6 @@ evaluation_batch_size: int = 1
 process_cycle: int = 96
 
 def simpleEvaluation(model_id: str, evaluation_task: str):
-    try: 
         simpleScheduler = SimpleScheduler(
             scheduler_gpu_type="CUDA:0"
         )
@@ -44,9 +43,6 @@ def simpleEvaluation(model_id: str, evaluation_task: str):
             evaluation_task=evaluation_task,
             evaluation_batch_size=evaluation_batch_size
         )
-    except Exception as e:
-        print(f"{model_id} Evaluation Error, Reason: {e}")
-        return
     
 def main():
     multiprocessing.set_start_method("spawn")

@@ -20,25 +20,32 @@ LOG_DIR = os.path.join(WORKSPACE_ROOT, "CT", "WebUI", "logs")
 ERROR_LOG = os.path.join(LOG_DIR, "quantization_errors.log")
 PROGRESS_LOG = os.path.join(LOG_DIR, "quantization_progress.log") 
 EVALUATION_LOG = os.path.join(LOG_DIR, "evaluation_progress.log")
-current_eval_process = None
+DEPLOYMENT_LOG = os.path.join(LOG_DIR, "deployment_progress.log")
+COMPILATION_LOG = os.path.join(LOG_DIR, "compilation_progress.log")
+QUANT_MODEL_DIR = os.path.join(WORKSPACE_ROOT, "..", "Models", "Quanted")
 PORT = 7678
 HOST = '10.20.108.87'
 current_quant_process = None
+current_eval_process = None
+current_deploy_process = None
+current_compile_process = None
 
 def setup_logging():
     """初始化日志目录和文件"""
     os.makedirs(LOG_DIR, exist_ok=True)
     if not os.path.exists(ERROR_LOG):
         with open(ERROR_LOG, 'w') as f:
-            f.write("====== Quantization Error Log ======\n")
+            f.write("====== Error Log ======\n")
     Path(PROGRESS_LOG).touch(exist_ok=True)
     Path(EVALUATION_LOG).touch(exist_ok=True)
+    Path(DEPLOYMENT_LOG).touch(exist_ok=True)
+    Path(COMPILATION_LOG).touch(exist_ok=True)
 
 def log_error(error_msg, source="backend"):
     """
     记录错误到日志文件
     :param error_msg: 错误信息
-    :param source: 错误来源 (backend/frontend/quant)
+    :param source: 错误来源 
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_entry = f"[{timestamp}] [{source.upper()}] {error_msg}\n"
@@ -73,13 +80,10 @@ def verify_password(username, password):
 
 quantization_params = {
     "model_name": None,
-    "precision": 4  # 默认精度
+    "precision": 4 
 }
 
 def quantification_entrypoint(model_id, log_path, is_vl_model):
-    """
-    后端包装函数，用于捕获quantization输出并写入日志。
-    """
     try:
         gptq_log_dir = os.path.join(WORKSPACE_ROOT, "CT", "WebUI", "gptq_log")
         os.makedirs(gptq_log_dir, exist_ok=True)
@@ -88,10 +92,10 @@ def quantification_entrypoint(model_id, log_path, is_vl_model):
         with open(log_path, 'a') as f:
             with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
                 if is_vl_model:
-                    from Example.Quantization.qwenVLQuantization import simpleQuantization
+                    from CT.Example.Quantization.qwenVLQuantization import simpleQuantization
                     print(f"[INFO] 启动VL模型量化: {model_id}")
                 else:
-                    from Example.Quantization.quantization import simpleQuantization
+                    from CT.Example.Quantization.quantization import simpleQuantization
                     print(f"[INFO] 启动普通模型量化: {model_id}")
                     
                 simpleQuantization(model_id)
@@ -107,9 +111,6 @@ def is_quant_running():
     return current_quant_process is not None and current_quant_process.is_alive()
 
 def run_quantification(model_name):
-    """
-    封装量化进程，添加错误处理
-    """
     global current_quant_process
 
     try:
@@ -136,24 +137,21 @@ def run_quantification(model_name):
         raise
 
 def evaluation_entrypoint(model_name, eval_method, eval_tasks, log_path, is_quantized=False):
-    """
-    评估任务入口：根据是否量化，调用不同的路径与模块。
-    """
     try:
         with open(log_path, 'a') as f:
             with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
                 if is_quantized:
                     print(f"[INFO] 使用 GPTQ 评估模块评估量化模型: {model_name}")
                     if eval_method == "evalPlus":
-                        from Example.Evaluation.GPTQ.evalPlus import simpleEvaluation
-                    else:  # lmEvalHarness
-                        from Example.Evaluation.GPTQ.lmEvaluationHarness import simpleEvaluation
+                        from CT.Example.Evaluation.GPTQ.evalPlus import simpleEvaluation
+                    else:  
+                        from CT.Example.Evaluation.GPTQ.lmEvaluationHarness import simpleEvaluation
                 else:
                     print(f"[INFO] 使用原始评估模块评估模型: {model_name}")
                     if eval_method == "evalPlus":
-                        from Example.Evaluation.evalPlus import simpleEvaluation
-                    else:  # lmEvalHarness
-                        from Example.Evaluation.lmEvaluationHarness import simpleEvaluation
+                        from CT.Example.Evaluation.FP16.evalPlus import simpleEvaluation
+                    else: 
+                        from CT.Example.Evaluation.FP16.lmEvaluationHarness import simpleEvaluation
 
                 # 遍历执行所有选中的评估任务
                 for task in eval_tasks:
@@ -172,9 +170,6 @@ def is_eval_running():
     return current_eval_process is not None and current_eval_process.is_alive()
 
 def run_evaluation(model_name, eval_method, eval_tasks, is_quantized=False):
-    """
-    启动评估进程，新增 eval_tasks 参数
-    """
     global current_eval_process
 
     try:
@@ -183,11 +178,9 @@ def run_evaluation(model_name, eval_method, eval_tasks, is_quantized=False):
 
         log_error(f"准备评估: {model_name}, 量化模型: {is_quantized}, 任务: {eval_tasks}", "eval")
 
-        # 对量化模型进行 ID 补全
         full_model_id = model_name
         if is_quantized:
             full_model_id = f"{model_name}-W4A16-gptq"
-
         current_eval_process = multiprocessing.Process(
             target=evaluation_entrypoint,
             args=(full_model_id, eval_method, eval_tasks, EVALUATION_LOG, is_quantized)
@@ -202,6 +195,90 @@ def run_evaluation(model_name, eval_method, eval_tasks, is_quantized=False):
         current_eval_process = None
         raise
 
+def deployment_entrypoint(model_name, log_path):
+    try:
+        with open(log_path, 'a') as f:
+            with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
+                print(f"[INFO] 启动模型部署: {model_name}")
+                from CT.Example.Deployment.gptqDeployment import simpleDeployment
+                simpleDeployment(model_name)
+                print(f"[INFO] 模型部署完成: {model_name}")
+    except Exception as e:
+        with open(log_path, 'a') as f:
+            f.write(f"[ERROR] 部署异常: {e}\n")
+
+def is_deploy_running():
+    global current_deploy_process
+    return current_deploy_process is not None and current_deploy_process.is_alive()
+
+def run_deployment(model_name):
+    global current_deploy_process
+
+    try:
+        with open(DEPLOYMENT_LOG, 'w') as f:
+            f.write("")
+
+        log_error(f"开始部署模型: {model_name}", "deploy")
+
+        current_deploy_process = multiprocessing.Process(
+            target=deployment_entrypoint,
+            args=(model_name, DEPLOYMENT_LOG)
+        )
+        current_deploy_process.start()
+
+        return current_deploy_process.pid
+
+    except Exception as e:
+        error_msg = f"部署启动失败 - 模型:{model_name} 错误:{traceback.format_exc()}"
+        log_error(error_msg, "deploy")
+        current_deploy_process = None
+        raise
+
+def compile_entrypoint(model_name, log_path):
+    try:
+        from CT.Example.Compile.compile import simpleCompile
+
+        with open(log_path, 'a') as f:
+            with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
+                print(f"[INFO] 启动模型编译流程: {model_name}")
+                model_path = os.path.join(QUANT_MODEL_DIR, f"{model_name}-W4A16-gptq")
+                if not os.path.exists(model_path):
+                    raise FileNotFoundError(f"找不到模型路径: {model_path}")
+
+                simpleCompile(model_path)
+
+                print(f"[INFO] 编译任务完成: {model_name}")
+
+    except Exception as e:
+        with open(log_path, 'a') as f:
+            f.write(f"[ERROR] 编译异常: {e}\n")
+
+def is_compile_running():
+    global current_compile_process
+    return current_compile_process is not None and current_compile_process.is_alive()
+
+def run_compilation(model_name):
+    global current_compile_process
+
+    try:
+        with open(COMPILATION_LOG, 'w') as f:
+            f.write("")
+
+        log_error(f"准备编译模型: {model_name}", "compile")
+
+        current_compile_process = multiprocessing.Process(
+            target=compile_entrypoint,
+            args=(model_name, COMPILATION_LOG)
+        )
+        current_compile_process.start()
+
+        return current_compile_process.pid
+
+    except Exception as e:
+        error_msg = f"编译失败 - 模型:{model_name} 错误:{traceback.format_exc()}"
+        log_error(error_msg, "compile")
+        current_compile_process = None
+        raise
 
 @app.route('/api', methods=['GET'])
 @auth.login_required
@@ -227,7 +304,10 @@ def post_api():
         data = request.get_json()
         log_error(f"收到请求数据: {str(data)}", "backend")
 
-        # 1. 处理评估启动请求
+        if data.get("action") == "get_quantization_params":
+            return jsonify(quantization_params)
+
+        # 评估启动
         if data.get("start_evaluation"):
             required_fields = ["model_name", "eval_method", "eval_tasks"]
             if not all(k in data for k in required_fields):
@@ -236,17 +316,15 @@ def post_api():
                 return jsonify({'success': False, 'message': error_msg}), 400
             
             try:
-                # 如果已有评估进程在运行，先终止
                 if is_eval_running():
                     current_eval_process.terminate()
                     time.sleep(1)
                 
-                # 启动新评估进程
                 is_quantized = data.get("is_quantized", False)
                 pid = run_evaluation(
                     data["model_name"], 
                     data["eval_method"],
-                    data["eval_tasks"],  # 新增任务列表参数
+                    data["eval_tasks"],
                     is_quantized=is_quantized
                 )
                 
@@ -255,18 +333,14 @@ def post_api():
                     'message': '评估进程已启动',
                     'pid': pid,
                     'eval_method': data["eval_method"],
-                    'eval_tasks': data["eval_tasks"]  # 返回任务列表用于确认
+                    'eval_tasks': data["eval_tasks"]  
                 })
             except Exception as e:
                 error_msg = f"评估进程启动失败: {str(e)}"
                 log_error(error_msg, "backend")
                 return jsonify({'success': False, 'message': error_msg}), 500
 
-        # 1. 处理参数获取请求
-        if data.get("action") == "get_quantization_params":
-            return jsonify(quantization_params)
-
-        # 2. 处理量化启动请求
+        # 量化启动
         if data.get("start_quantization"):
             if "model_name" not in data:
                 error_msg = "缺少模型名称参数"
@@ -274,12 +348,10 @@ def post_api():
                 return jsonify({'success': False, 'message': error_msg}), 400
             
             try:
-                # 如果已有量化进程在运行，先终止
                 if is_quant_running():
                     current_quant_process.terminate()
-                    time.sleep(1)  # 等待进程终止
+                    time.sleep(1) 
                 
-                # 启动新进程
                 pid = run_quantification(data["model_name"])
                 
                 log_error(f"已启动量化进程 PID: {pid}", "backend")
@@ -295,22 +367,69 @@ def post_api():
                 error_msg = f"量化进程启动失败: {str(e)}"
                 log_error(error_msg, "backend")
                 return jsonify({'success': False, 'message': error_msg}), 500
+            
+        # 部署启动
+        if data.get("start_deployment"):
+            if "model_name" not in data:
+                error_msg = "缺少模型名称参数"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 400
+
+            try:
+                if is_deploy_running():
+                    current_deploy_process.terminate()
+                    time.sleep(1)
+
+                pid = run_deployment(data["model_name"])
+
+                return jsonify({
+                    'success': True,
+                    'message': '部署进程已启动',
+                    'pid': pid
+                })
+            except Exception as e:
+                error_msg = f"部署进程启动失败: {str(e)}"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 500
+            
+        # 编译启动
+        if data.get("start_compilation"):
+            if "model_name" not in data:
+                error_msg = "缺少模型名称参数"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 400
+
+            try:
+                if is_compile_running():
+                    current_compile_process.terminate()
+                    time.sleep(1)
+
+                pid = run_compilation(data["model_name"])
+
+                return jsonify({
+                    'success': True,
+                    'message': '编译进程已启动',
+                    'pid': pid
+                })
+            except Exception as e:
+                error_msg = f"编译进程启动失败: {str(e)}"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 500
     
-        # 3. 处理普通参数更新
         if "model_name" in data:
             quantization_params["model_name"] = data["model_name"]
             log_error(f"更新模型名称: {data['model_name']}", "backend")
         
-        # if "precision" in data:
-        #     quantization_params["precision"] = int(data["precision"])
-        #     log_error(f"更新量化精度: {data['precision']}bit", "backend")
+      # if "precision" in data:
+      # quantization_params["precision"] = int(data["precision"])
+      # log_error(f"更新量化精度: {data['precision']}bit", "backend")
 
         return jsonify({
             'success': True,
             'message': '参数更新成功',
             'current_params': {
                 'model_name': quantization_params["model_name"],
-                # 'precision': quantization_params["precision"]  # 
+              # 'precision': quantization_params["precision"]  # 
             }
         })
 
@@ -351,7 +470,7 @@ def remove_ansi_codes(text):
 @app.route('/api/progress', methods=['GET'])
 @auth.login_required
 def get_progress():
-    """获取当前量化进度"""
+    """获取量化进度"""
     try:
         if not os.path.exists(PROGRESS_LOG):
             return jsonify({
@@ -360,9 +479,8 @@ def get_progress():
                 'is_running': False
             }), 404
         
-        # 读取最后50行进度日志
         with open(PROGRESS_LOG, 'r') as f:
-            lines = f.readlines()[-50:]  # 获取最后50行
+            lines = f.readlines()[-150:]  
         
         # 过滤 ANSI 转义字符
         clean_lines = [remove_ansi_codes(line.strip()) for line in lines if line.strip()]
@@ -383,7 +501,7 @@ def get_progress():
 @app.route('/api/eval_progress', methods=['GET'])
 @auth.login_required
 def get_eval_progress():
-    """获取评估进度（类似get_progress）"""
+    """获取评估进度"""
     try:
         if not os.path.exists(EVALUATION_LOG):
             return jsonify({
@@ -393,7 +511,7 @@ def get_eval_progress():
             }), 404
         
         with open(EVALUATION_LOG, 'r') as f:
-            lines = f.readlines()[-50:]
+            lines = f.readlines()[-100:]
         
         clean_lines = [remove_ansi_codes(line.strip()) for line in lines if line.strip()]
         
@@ -410,6 +528,62 @@ def get_eval_progress():
             'is_running': False
         }), 500
 
+@app.route('/api/deploy_progress', methods=['GET'])
+@auth.login_required
+def get_deploy_progress():
+    """获取部署进度"""
+    try:
+        if not os.path.exists(DEPLOYMENT_LOG):
+            return jsonify({'success': False, 'message': '部署日志文件不存在'}), 404
+
+        with open(DEPLOYMENT_LOG, 'r') as f:
+            lines = f.readlines()
+        last_lines = lines[-50:]  
+        clean_lines = [remove_ansi_codes(line) for line in last_lines]
+
+        running = is_deploy_running()
+        return jsonify({
+            'success': True,
+            'is_running': running,
+            'logs': clean_lines
+        })
+
+    except Exception as e:
+        error_msg = f"获取部署日志失败: {str(e)}"
+        log_error(error_msg, "deploy")
+        return jsonify({'success': False, 'message': '服务器错误'}), 500
+    
+@app.route('/api/compile_progress', methods=['GET'])
+@auth.login_required
+def get_compile_progress():
+    """获取编译进度"""
+    try:
+        if not os.path.exists(COMPILATION_LOG):
+            return jsonify({
+                'success': False,
+                'message': '编译日志不存在',
+                'is_running': False
+            }), 404
+
+        with open(COMPILATION_LOG, 'r') as f:
+            lines = f.readlines()[-50:]
+
+        clean_lines = [remove_ansi_codes(line.strip()) for line in lines if line.strip()]
+
+        return jsonify({
+            'success': True,
+            'progress': clean_lines,
+            'is_running': is_compile_running()
+        })
+    except Exception as e:
+        log_error(f"获取编译进度失败: {str(e)}", "backend")
+        return jsonify({
+            'success': False,
+            'message': '获取编译进度失败',
+            'is_running': False
+        }), 500
+
+
 @app.route('/api/cancel_quant', methods=['POST'])
 @auth.login_required
 def cancel_quantization():
@@ -422,14 +596,12 @@ def cancel_quantization():
                 'message': '没有正在运行的量化进程'
             }), 400
         
-        # 先写入日志再终止进程
         with open(PROGRESS_LOG, 'a') as f:
             f.write("[INFO] 正在取消量化进程...\n")
         
         current_quant_process.terminate()
-        current_quant_process.join(timeout=2)  # 设置超时
+        current_quant_process.join(timeout=2) 
         
-        # 确认进程已终止后再记录
         with open(PROGRESS_LOG, 'a') as f:
             f.write("[INFO] 量化进程已被用户取消\n")
         
@@ -482,6 +654,59 @@ def cancel_evaluation():
             'message': error_msg
         }), 500
 
+@app.route('/api/cancel_deployment', methods=['POST'])
+@auth.login_required
+def cancel_deployment():
+    global current_deploy_process
+    try:
+        if is_deploy_running():
+            current_deploy_process.terminate()
+            current_deploy_process = None
+            log_error("部署任务被用户终止", "deploy")
+            return jsonify({'success': True, 'message': '部署进程已取消'})
+        else:
+            return jsonify({'success': False, 'message': '没有正在运行的部署任务'})
+    except Exception as e:
+        log_error(f"取消部署进程失败: {str(e)}", "deploy")
+        return jsonify({'success': False, 'message': '取消部署失败'}), 500
+
+@app.route('/api/cancel_compile', methods=['POST'])
+@auth.login_required
+def cancel_compilation():
+    global current_compile_process
+
+    try:
+        if not is_compile_running():
+            return jsonify({
+                'success': False,
+                'message': '没有正在运行的编译进程'
+            }), 400
+
+        with open(COMPILATION_LOG, 'a') as f:
+            f.write("[INFO] 正在取消编译进程...\n")
+
+        current_compile_process.terminate()
+        current_compile_process.join(timeout=2)
+
+        with open(COMPILATION_LOG, 'a') as f:
+            f.write("[INFO] 编译进程已被用户取消\n")
+
+        current_compile_process = None
+
+        return jsonify({
+            'success': True,
+            'message': '编译进程已成功取消'
+        })
+
+    except Exception as e:
+        error_msg = f"取消编译失败: {str(e)}"
+        log_error(error_msg, "backend")
+        return jsonify({
+            'success': False,
+            'message': error_msg
+        }), 500
+
+
 if __name__ == '__main__':
     print(f'''
     服务器已启动！
@@ -489,6 +714,9 @@ if __name__ == '__main__':
     - 进度获取: http://{HOST}:{PORT}/api/progress
     - POST 测试需使用 Postman 或前端调用
     - 错误日志路径: {ERROR_LOG}
-    - 进度日志路径: {PROGRESS_LOG}
+    - 量化日志路径: {PROGRESS_LOG}
+    - 评估日志路径: {EVALUATION_LOG}
+    - 部署日志路径: {DEPLOYMENT_LOG}
+    - 编译日志路径: {COMPILATION_LOG}
     ''')
     app.run(host=HOST, port=PORT)

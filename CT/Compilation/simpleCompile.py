@@ -13,9 +13,10 @@ from .compile_glm import GlmCompiler
 
 @dataclass
 class simpleCompiler():
-    model_type: str = field(default="Qwen", metadata={"choices": [
+    model_classification: str = field(default="Qwen", metadata={"choices": [
         "Qwen",
-        "Glm"
+        "Glm",
+        "QwenVL"
         ]})
     input_datapt: str = field(
         default="",
@@ -25,7 +26,7 @@ class simpleCompiler():
         default="",
         metadata={"help": "Path to the compiled model directory"}
         )
-    wbits: int = field(
+    model_type: int = field(
         default=4,
         metadata={"help": "Number of bits used for quantization", "choices": [4, 8]}
     )
@@ -39,19 +40,19 @@ class simpleCompiler():
     )
 
     def __post_init__(self):
-        if self.model_type == "Qwen":
+        if self.model_classification == "Qwen":
             self.compiler=QwenCompiler(
                 quantize_model=self.input_datapt,
                 compiled_model=self.output_datapt,
-                wbits=self.wbits,
+                wbits=self.model_type,
                 group_size=self.group_size,
                 device=self.device 
             )
-        elif self.model_type == "Glm":
+        elif self.model_classification == "Glm":
             self.compiler=GlmCompiler(
                 model_name=self.input_datapt,
                 quantize_model=self.output_datapt,
-                wbits=self.wbits,
+                wbits=self.model_type,
                 group_size=self.group_size
                  
             )
