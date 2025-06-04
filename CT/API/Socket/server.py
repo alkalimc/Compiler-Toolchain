@@ -105,7 +105,7 @@ def main_response_handler():
             print(f"Processing message: {query[:50]}...")
 
             # 固定响应内容
-            response = "我是chatglm大模型"
+            response = "我是chatglm大模型。"
             print(f"Sending response: {response}")
 
             # 发送响应
