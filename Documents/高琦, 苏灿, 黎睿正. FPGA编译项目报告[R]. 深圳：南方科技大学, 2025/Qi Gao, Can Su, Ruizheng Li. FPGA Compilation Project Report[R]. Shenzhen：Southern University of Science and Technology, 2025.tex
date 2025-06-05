@@ -5,8 +5,20 @@
 \usepackage{pgfplots}
 \usepackage{booktabs}
 \usepackage{caption}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{red},
+  breaklines=true,
+  frame=single,
+  columns=fullflexible
+}
 \input{config/preamble.tex}
 \input{config/info.tex}
+
 \begin{document}
 \前序格式化
 \摘要标题
@@ -48,13 +60,654 @@
 \end{itemize}
 
 \subsection{WebUI}
+前端WebUI主要支持用户进行一键式操作，为大模型上板做好准备工作，提供用户登录、各项部署细节选择、取消进程、实时日志查看服务。
 \begin{itemize}
+    \item 网页界面展示
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=.64\textwidth]{./figures/login_display.png}
+            \caption{用户登录界面展示}
+        \end{figure}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=.64\textwidth]{./figures/log_display.png}
+            \caption{日志界面展示}
+        \end{figure}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=.64\textwidth]{./figures/deploymenttool_display.png}
+            \caption{部署工具界面展示}
+        \end{figure}
+        \begin{lstlisting}[language=HTML]
+        //工具选项设置代码
+    data() {
+        return {
+          activeSections: ['model', 'quant', 'target', 'eval', 'task'],
+          selectedModel: '',
+          selectedQuantPrecision: 'int4',
+          isDeploying: false,
+          deployStatus: [],
+          pollingInterval: null,
+          progressPollingInterval: null,
+          quantPid: null,
+          selectedEvalMethod: 'evalPlus',
+          selectedEvalTarget: 'none',
+          quantLogs: [],
+          evalLogs:[],
+          dataLogs:[],
+          models: [
+            { value: 'qwen2', label: 'Qwen2-7B-Instruct', icon: modelQwen },
+            { value: 'qwen2.5', label: 'Qwen2.5-7B-Instruct', icon: modelQwen },
+            { value: 'qwen2-vl', label: 'Qwen2-VL-7B-Instruct', icon: modelQwen },
+            { value: 'qwen2.5-vl', label: 'Qwen2.5-VL-7B-Instruct', icon: modelQwen },
+            { value: 'deepseek', label: 'DeepSeek-R1-Distill-Qwen-7B', icon: modelDeepseek }
+          ],
+          precisions: [
+            { value: 'int2', label: 'INT2', precisionValue: 2 },
+            { value: 'int4', label: 'INT4（仅支持）', precisionValue: 4 },
+            { value: 'int8', label: 'INT8', precisionValue: 8 }
+          ],
+          evalMethods: [
+            { label: 'EvalPlus', value: 'evalPlus' },
+            { label: 'lmEvaluationHarness', value: 'lmEvalHarness' }
+          ],
+          evalPlusTasks: [
+            { value: 'humaneval', label: 'HumanEval' },
+            { value: 'mbpp', label: 'MBPP' }
+          ],
+          lmEvalHarnessTasks: [
+            { value: 'arc_easy', label: 'ARC Easy' },
+            { value: 'arc_challenge', label: 'ARC Challenge' },
+            { value: 'gsm8k_cot', label: 'GSM8K CoT' },
+            { value: 'gsm8k_platinum_cot', label: 'GSM8K Platinum CoT' },
+            { value: 'hellaswag', label: 'HellaSwag' },
+            { value: 'mmlu', label: 'MMLU' },
+            { value: 'gpqa', label: 'GPQA' },
+            { value: 'boolq', label: 'BoolQ' },
+            { value: 'openbookqa', label: 'OpenBookQA' }
+          ],
+          selectedEvalTasks: [],
+          evalTargets: [
+            { label: '原模型', value: 'origin' },
+            { label: '量化模型', value: 'quant' },
+            { label: '两个都评分', value: 'both' },
+            { label: '不评分', value: 'none' }
+          ],
+        }
+    },
+        \end{lstlisting}
+        
     \item 用户管理：支持自定义登录用户
-    \item 打分：支持同时开展多框架多测试项测试和原模型、量化模型对比测试
-    \item GPU部署：支持同时部署原模型、量化模型以便对比
-    \item 客制化：支持定制页面图标、企业名称、语言
-\end{itemize}
+    \begin{lstlisting}[language=HTML]
+    //前端登录界面代码
+    <script>
+    import axios from 'axios'
+    
+    export default {
+      name: 'Login',
+      data() {
+        return {
+          loading: false,
+          loginForm: {
+            username: '',
+            password: ''
+          },
+          rules: {
+            username: [
+              { required: true, message: '请输入用户名', trigger: 'blur' }
+            ],
+            password: [
+              { required: true, message: '请输入密码', trigger: 'blur' }
+            ]
+          }
+        }
+      },
+      methods: {
+        handleLogin() {
+          this.$refs.loginForm.validate(valid => {
+            if (valid) {
+              this.loading = true
+              this.verifyCredentials()
+            }
+          })
+        },
+        async verifyCredentials() {
+          try {
+            const authHeader = 'Basic ' + btoa(`${this.loginForm.username}:${this.loginForm.password}`)
+            const response = await axios.get('/api/verify', {
+              headers: { 'Authorization': authHeader }
+            })
+    
+            if (response.data.success) {
+              this.$emit('login-success', {
+                username: this.loginForm.username,
+                password: this.loginForm.password
+              })
+            } else {
+              throw new Error(response.data.message || '认证失败')
+            }
+          } catch (error) {
+            let errorMsg = '登录失败: '
+            if (error.response) {
+              errorMsg += error.response.data?.message || error.response.statusText
+            } else {
+              errorMsg += error.message
+            }
+            this.$message.error(errorMsg)
+            console.error('登录错误详情:', error)
+          } finally {
+            this.loading = false
+          }
+        }
+      }
+    }
+    </script>
+    \end{lstlisting}
+    提供用户登录界面，使用体验更规范，同时可根据不同账户指定特定权限如管理员权限。
+    支持客户添加指定账户，后续可拓展使用实时token验证方式提高安全性。
 
+    \item 打分：支持同时开展多框架多测试项测试和原模型、量化模型对比测试
+    \begin{lstlisting}[language=HTML]
+    //轮询日志同步进度信息
+    async startEvaluationPolling(target) {
+      let failCount = 0;
+      const MAX_FAILS = 5;
+
+      const interval = setInterval(async () => {
+        try {
+          const response = await axios.get(`${this.apiUrl}/eval_progress`, {
+            headers: {
+              'Authorization': 'Basic ' + btoa(`${this.authInfo.username}:${this.authInfo.password}`)
+            }
+          });
+
+          if (response.data.success) {
+            failCount = 0;
+            const progressLines = response.data.progress || [];
+            this.evalLogs.push(...progressLines);
+            this.$emit('eval-log', progressLines);
+
+            const hasError = this.evalLogs.some(line =>
+                line.includes('[ERROR]') ||
+                line.includes('失败') ||
+                line.includes('异常') ||
+                line.includes('Traceback')
+            );
+
+            const hasCompleted = this.evalLogs.some(line =>
+                line.includes('完成') ||
+                line.toLowerCase().includes('evaluation finished') ||
+                line.toLowerCase().includes('scoring complete') ||
+                line.toLowerCase().includes('done')
+            );
+
+            if (hasError) {
+              clearInterval(interval);
+              this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 评分失败，请检查日志`);
+              return;
+            }
+
+            if (!response.data.is_running && !hasCompleted) {
+              clearInterval(interval);
+              this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 评分中断但未检测到“完成”关键词，可能失败`);
+              return;
+            }
+
+            if (hasCompleted) {
+              clearInterval(interval);
+              this.deployStatus.push(`✅ ${target === 'origin' ? '原模型' : '量化模型'} 评分完成`);
+            }
+          }
+        } catch (error) {
+          const isAxiosError = error.isAxiosError;
+          const errMsg = error?.message || '';
+          const isIgnorable = errMsg.includes('ERR_EMPTY_RESPONSE') ||
+              (isAxiosError && !error.response);
+
+          if (isIgnorable) {
+            failCount++;
+            console.warn(`⚠️ 评分轮询失败（可忽略）: ${errMsg}，当前失败次数: ${failCount}`);
+
+            if (failCount >= MAX_FAILS) {
+              clearInterval(interval);
+              this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 连续多次无法获取评分进度，任务可能失败`);
+              this.$message.error('评分进度查询连续失败，已中止');
+            }
+            return;
+          }
+          clearInterval(interval);
+          this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 评分进度获取失败: ${errMsg}`);
+          this.$message.error('评分进度查询失败');
+        }
+      }, 3000);
+    },
+    \end{lstlisting}
+    当流程进行到原模型打分或量化模型评分时调用startEvaluation启动评分程序
+    \begin{lstlisting}[language=HTML]
+    //评分部分开始
+    async startEvaluation(target) {
+      const model = this.getCurrentModel();
+      const method = this.selectedEvalMethod;
+
+      this.evalLogs = [];
+      this.deployStatus.push(`开始对 ${target === 'origin' ? '原模型' : '量化模型'} 进行评分（方法：${method}）...`);
+
+      try {
+        const response = await axios.post(`${this.apiUrl}`, {
+          model_name: model.label,
+          eval_method: method,
+          eval_tasks: this.selectedEvalTasks,
+          start_evaluation: true,
+          is_quantized: target !== 'origin'
+        }, {
+          headers: {
+            'Authorization': 'Basic ' + btoa(`${this.authInfo.username}:${this.authInfo.password}`)
+          }
+        });
+
+        if (response.data.success) {
+          this.deployStatus.push(`✅ ${target === 'origin' ? '原模型' : '量化模型'} 评分任务已启动`);
+          this.startEvaluationPolling(target);
+        } else {
+          throw new Error(response.data.message || '评分启动失败');
+        }
+      } catch (error) {
+        console.error(`评分启动失败 (${target})`, error);
+        const errorMsg = error.response?.data?.message || error.message;
+        this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 评分启动失败: ${error.message}`);
+      }
+    },
+    \end{lstlisting}
+    当用户取消部署时，前端向api发送取消信息，后端分别取消对应流程代码
+    \begin{lstlisting}[language=HTML]
+    //前端向api发送取消信息并监控是否成功取消进程
+    async cancelDeploy() {
+      try {
+        if (!this.isDeploying) return;
+
+        if (this.progressPollingInterval) {
+          clearInterval(this.progressPollingInterval);
+        }
+
+        this.deployStatus.push('正在取消部署流程...');
+
+        try {
+          const quantCancelResp = await axios.post(`${this.apiUrl}/cancel_quant`, {}, {
+            headers: {
+              'Authorization': 'Basic ' + btoa(`${this.authInfo.username}:${this.authInfo.password}`)
+            }
+          });
+
+          if (quantCancelResp.data.success) {
+            this.deployStatus.push('✅ 已成功取消量化进程');
+          } else {
+            this.deployStatus.push('⚠️ 取消量化失败: ' + quantCancelResp.data.message);
+          }
+        } catch (e) {
+          this.deployStatus.push('⚠️ 取消量化时发生异常: ' + (e.message));
+        }
+
+        try {
+          const cancelResp = await axios.post(`${this.apiUrl}/cancel_eval`, {}, {
+            headers: {
+              'Authorization': 'Basic ' + btoa(`${this.authInfo.username}:${this.authInfo.password}`)
+            }
+          });
+
+          if (cancelResp.data.success) {
+            this.deployStatus.push(`✅ 已取消评分进程`);
+          } else {
+            this.deployStatus.push(`⚠️ 无法取消评分: ${cancelResp.data.message}`);
+          }
+        } catch (error) {
+          this.deployStatus.push(`⚠️ 取消评分失败: ${error.message}`);
+        }
+
+        try {
+          const cancelResp = await axios.post(`${this.apiUrl}/cancel_deployment`, {}, {
+            headers: {
+              'Authorization': 'Basic ' + btoa(`${this.authInfo.username}:${this.authInfo.password}`)
+            }
+          });
+
+          if (cancelResp.data.success) {
+            this.deployStatus.push(`✅ 已取消部署进程`);
+            this.$message.success('部署进程已成功取消');
+          } else {
+            this.deployStatus.push(`⚠️ 无法取消部署: ${cancelResp.data.message}`);
+            this.$message.warning(cancelResp.data.message || '无法取消部署进程');
+          }
+        } catch (error) {
+          const errMsg = error?.response?.data?.message || error.message;
+          this.deployStatus.push(`⚠️ 取消部署失败: ${errMsg}`);
+          this.$message.error('取消部署失败');
+        }
+
+        try {
+          const cancelResp = await axios.post(`${this.apiUrl}/cancel_compile`, {}, {
+            headers: {
+              'Authorization': 'Basic ' + btoa(`${this.authInfo.username}:${this.authInfo.password}`)
+            }
+          });
+
+          if (cancelResp.data.success) {
+            this.deployStatus.push(`✅ 已取消编译进程`);
+          } else {
+            this.deployStatus.push(`⚠️ 无法取消编译: ${cancelResp.data.message}`);
+          }
+        } catch (error) {
+          this.deployStatus.push(`⚠️ 取消编译失败: ${error.message}`);
+        }
+
+        this.isDeploying = false;
+        this.$message.warning('部署流程和评分流程已中断');
+
+      } catch (error) {
+        console.error('取消部署失败:', error);
+        const errorMsg = error.response?.data?.message || error.message;
+        this.deployStatus.push(`⚠️ 取消失败: ${errorMsg}`);
+        this.$message.error(`取消失败: ${errorMsg}`);
+      } finally {
+        this.isDeploying = false;
+      }
+    },
+    \end{lstlisting}
+    \begin{lstlisting}[language=python]
+    //取消评分进程
+    @app.route('/api/cancel_eval', methods=['POST'])
+    @auth.login_required
+    def cancel_evaluation():
+        global current_eval_process
+        
+        try:
+            if not is_eval_running():
+                return jsonify({
+                    'success': False,
+                    'message': '没有正在运行的评估进程'
+                }), 400
+            
+            with open(EVALUATION_LOG, 'a') as f:
+                f.write("[INFO] 正在取消评估进程...\n")
+            
+            current_eval_process.terminate()
+            current_eval_process.join(timeout=2)
+            
+            with open(EVALUATION_LOG, 'a') as f:
+                f.write("[INFO] 评估进程已被用户取消\n")
+            
+            current_eval_process = None
+            
+            return jsonify({
+                'success': True,
+                'message': '评估进程已成功取消'
+            })
+        except Exception as e:
+            error_msg = f"取消评估失败: {str(e)}"
+            log_error(error_msg, "backend")
+            return jsonify({
+                'success': False,
+                'message': error_msg
+            }), 500
+    \end{lstlisting}
+    
+    \item GPU部署：支持同时部署原模型、量化模型以便对比
+    \begin{lstlisting}[language=HTML]
+    //根据用户需求进行对应模型部署
+    async startDeployment() {
+      const model = this.getCurrentModel();
+
+      this.deployLogs = [];
+      this.deployStatus.push(`开始部署模型 ${model.label} ...`);
+
+      try {
+        const response = await axios.post(`${this.apiUrl}`, {
+          model_name: model.label,
+          start_deployment: true
+        }, {
+          headers: {
+            'Authorization': 'Basic ' + btoa(`${this.authInfo.username}:${this.authInfo.password}`)
+          }
+        });
+
+        if (response.data.success) {
+          this.deployStatus.push(`✅ 模型 ${model.label} 部署任务已启动`);
+          this.startDeploymentPolling();
+        } else {
+          throw new Error(response.data.message || '部署启动失败');
+        }
+      } catch (error) {
+        console.error('部署启动失败', error);
+        const errorMsg = error.response?.data?.message || error.message;
+        this.deployStatus.push(`❌ 模型 ${model.label} 部署启动失败: ${errorMsg}`);
+      }
+    },
+    \end{lstlisting}
+    用户可在模型部署界面选择对原模型/量化模型进行部署，后续将补充对话框，实现部署后用户即时与模型互动直观体验功能
+    \begin{lstlisting}[language=HTML]
+    //模型部署界面
+    <template>
+      <el-card class="deployment-tool-card">
+        <div slot="header" class="header-with-icon">
+          <img src="@/assets/header-icon.jpg" class="header-icon">
+          <span>部署模型管理</span>
+        </div>
+    
+        <el-form label-position="top">
+          <!-- 模型名称选择 -->
+          <el-form-item label="模型名称">
+            <el-select v-model="selectedModel" placeholder="请选择模型">
+              <el-option
+                  v-for="model in models"
+                  :key="model.value"
+                  :label="model.label"
+                  :value="model.value">
+                <span style="float: left">{{ model.label }}</span>
+                <img :src="model.icon" class="option-icon" />
+              </el-option>
+            </el-select>
+          </el-form-item>
+    
+          <!-- 部署类型选择 -->
+          <el-form-item label="部署类型">
+            <el-select v-model="deployType" placeholder="请选择部署类型">
+              <el-option
+                  v-for="type in deployTypes"
+                  :key="type.value"
+                  :label="type.label"
+                  :value="type.value">
+                <span style="float: left">{{ type.label }}</span>
+              </el-option>
+            </el-select>
+          </el-form-item>
+    
+          <!-- 启动部署按钮 -->
+          <div class="deploy-button-wrapper">
+            <el-form-item>
+              <el-button type="primary"
+                         :loading="isDeploying"
+                         :disabled="!selectedModel || !deployType"
+                         @click="startDeploy">
+                启动部署
+              </el-button>
+            </el-form-item>
+          </div>
+    
+          <!-- 部署日志展示区域 -->
+          <el-card class="deploy-log-card" v-if="deployLogs.length > 0">
+            <div class="log-title">部署日志</div>
+            <div class="log-content">
+              <div v-for="(log, index) in deployLogs" :key="index" class="log-line">{{ log }}</div>
+            </div>
+          </el-card>
+    
+        </el-form>
+      </el-card>
+    </template>
+    \end{lstlisting}
+
+    \item API接口：捕捉用户需求并启动后端程序
+    \begin{lstlisting}[language=python]
+    WORKSPACE_ROOT = "/data/disk0/Workspace/Compiler-Toolchain/Compiler-Toolchain"
+    sys.path.insert(0, WORKSPACE_ROOT)
+    os.chdir(WORKSPACE_ROOT) 
+    //以量化板块为例展示进程启动与日志捕获
+    def quantification_entrypoint(model_id, log_path, is_vl_model):
+    try:
+        gptq_log_dir = os.path.join(WORKSPACE_ROOT, "CT", "WebUI", "gptq_log")
+        os.makedirs(gptq_log_dir, exist_ok=True)
+        os.chdir(gptq_log_dir)
+    
+        with open(log_path, 'a') as f:
+            with contextlib.redirect_stdout(f), contextlib.redirect_stderr(f):
+                if is_vl_model:
+                    from CT.Example.Quantization.qwenVLQuantization import simpleQuantization
+                    print(f"[INFO] 启动VL模型量化: {model_id}")
+                else:
+                    from CT.Example.Quantization.quantization import simpleQuantization
+                    print(f"[INFO] 启动普通模型量化: {model_id}")
+                    
+                simpleQuantization(model_id)
+
+                print(f"[INFO] 模型量化完成: {model_id}")
+
+    except Exception as e:
+        with open(log_path, 'a') as f:
+            f.write(f"[ERROR] 模型量化异常: {e}\n")
+    
+    def is_quant_running():
+        global current_quant_process
+        return current_quant_process is not None and current_quant_process.is_alive()
+    
+    def run_quantification(model_name):
+        global current_quant_process
+    
+        try:
+            # 清空进度日志
+            with open(PROGRESS_LOG, 'w') as f:
+                f.write("")
+            
+            is_vl_model = "VL" in model_name.upper()
+            log_error(f"开始量化模型: {model_name} (类型: {'VL' if is_vl_model else '普通'})", "quant")
+    
+            # 创建并启动量化进程
+            current_quant_process = multiprocessing.Process(
+                target=quantification_entrypoint,
+                args=(model_name, PROGRESS_LOG, is_vl_model,)
+            )
+            current_quant_process.start()
+    
+            return current_quant_process.pid
+        
+        except Exception as e:
+            error_msg = f"量化失败 - 模型:{model_name} 错误:{traceback.format_exc()}"
+            log_error(error_msg, "quant")
+            current_quant_process = None
+            raise
+    \end{lstlisting}
+    \begin{lstlisting}[language=python]
+    //接收前端信息执行对应操作
+    @app.route('/api', methods=['POST'])
+    @auth.login_required
+    def post_api():
+        try:
+            if data.get("start_quantization"):
+            if "model_name" not in data:
+                error_msg = "缺少模型名称参数"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 400
+            
+            try:
+                if is_quant_running():
+                    current_quant_process.terminate()
+                    time.sleep(1) 
+                
+                pid = run_quantification(data["model_name"])
+                
+                log_error(f"已启动量化进程 PID: {pid}", "backend")
+                return jsonify({
+                    'success': True,
+                    'message': '量化进程已启动',
+                    'pid': pid,
+                    'current_params': {
+                        'model_name': data["model_name"]
+                    }
+                })
+            except Exception as e:
+                error_msg = f"量化进程启动失败: {str(e)}"
+                log_error(error_msg, "backend")
+                return jsonify({'success': False, 'message': error_msg}), 500
+                
+    @app.route('/api/progress', methods=['GET'])
+    @auth.login_required
+    def get_progress():
+        """获取量化进度"""
+        try:
+            if not os.path.exists(PROGRESS_LOG):
+                return jsonify({
+                    'success': False, 
+                    'message': '进度文件不存在',
+                    'is_running': False
+                }), 404
+            
+            with open(PROGRESS_LOG, 'r') as f:
+                lines = f.readlines()[-150:]  
+            
+            # 过滤 ANSI 转义字符
+            clean_lines = [remove_ansi_codes(line.strip()) for line in lines if line.strip()]
+            
+            return jsonify({
+                'success': True,
+                'progress': clean_lines,
+                'is_running': is_quant_running()
+            })
+        except Exception as e:
+            log_error(f"获取进度失败: {str(e)}", "backend")
+            return jsonify({
+                'success': False, 
+                'message': '获取进度失败',
+                'is_running': False
+            }), 500
+
+    @app.route('/api/cancel_quant', methods=['POST'])
+    @auth.login_required
+    def cancel_quantization():
+        global current_quant_process
+        
+        try:
+            if not is_quant_running():
+                return jsonify({
+                    'success': False,
+                    'message': '没有正在运行的量化进程'
+                }), 400
+            
+            with open(PROGRESS_LOG, 'a') as f:
+                f.write("[INFO] 正在取消量化进程...\n")
+            
+            current_quant_process.terminate()
+            current_quant_process.join(timeout=2) 
+            
+            with open(PROGRESS_LOG, 'a') as f:
+                f.write("[INFO] 量化进程已被用户取消\n")
+            
+            current_quant_process = None
+            
+            return jsonify({
+                'success': True,
+                'message': '量化进程已成功取消'
+            })
+        except Exception as e:
+            error_msg = f"取消量化失败: {str(e)}"
+            log_error(error_msg, "backend")
+            return jsonify({
+                'success': False,
+                'message': error_msg
+            }), 500
+    \end{lstlisting}
+    
+    \item 客制化：支持定制页面图标、企业名称、语言
+    前端代码通过组件进行组合，针对客户指定的页面需求可快速调整背景图片、图标、网页风格等一系列元素，实现便捷定制。
+    \end{itemize}   
+    
 \subsection{FPGA OpenAI-Style API}
 
 \section{开发计划表}
