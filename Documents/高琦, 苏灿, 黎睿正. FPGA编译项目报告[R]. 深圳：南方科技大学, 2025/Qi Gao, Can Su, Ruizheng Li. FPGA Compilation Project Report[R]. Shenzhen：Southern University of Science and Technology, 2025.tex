@@ -1,0 +1,72 @@
+% !Mode:: "TeX:UTF-8"
+% !TEX program  = xelatex
+% !BIB program  = biber
+\documentclass[AutoFakeBold,AutoFakeSlant,language=chinese,degree=bachelor]{sustechthesis}
+\usepackage{pgfplots}
+\usepackage{booktabs}
+\usepackage{caption}
+\input{config/preamble.tex}
+\input{config/info.tex}
+\begin{document}
+\前序格式化
+\摘要标题
+\正文格式化
+
+\section{项目背景}
+目前大模型部署存在的难点
+\begin{itemize}
+    \item 工具结合度低
+    
+        现有的量化、打分和部署等工具模块间甚至模块内操作逻辑不一致，许多操作之间仍需手动调整参数。
+    \item 新模型适配成本高
+    
+        现有的工作流需要根据所使用的模型手动调整，新模型需要逐一环节调试，无法开箱即用。
+    \item 操作学习成本高
+    
+        现有的工具多为命令行工具，缺少直观的交互逻辑和图形化界面，用户操作上手难度较大。
+\end{itemize}
+
+\section{项目内容}
+\subsection{技术特性}
+\begin{itemize}
+    \item 量化：支持GPTQ指定bits、group\_size、desc\_act
+    \item 打分
+        \begin{itemize}
+            \item 支持lm-evaluation-harness测试项
+            
+                arc\_easy、arc\_challenge、gsm8k\_cot、gsm8k\_platinum\_cot、hellaswag、mmlu、gpqa、boolq、openbookqa
+            \item 支持EvalPlus测试项
+            
+                humaneval、mbpp
+        \end{itemize}
+
+    \item GPU部署：支持vLLM指定上下文长度、显存占用限制、服务端口、API密钥
+    \item 权重处理：支持Compiler-VCU128指定bits、group\_size、desc\_act
+    \item FPGA服务：支持Fast API指定上下文长度、生成温度、服务端口、API密钥
+    \item GPU、Port调度器：支持GPU设备图分类、调整调度显存占用量、设备锁机制
+    \item WebUI：支持指定服务地址、用户管理
+\end{itemize}
+
+\subsection{WebUI}
+\begin{itemize}
+    \item 用户管理：支持自定义登录用户
+    \item 打分：支持同时开展多框架多测试项测试和原模型、量化模型对比测试
+    \item GPU部署：支持同时部署原模型、量化模型以便对比
+    \item 客制化：支持定制页面图标、企业名称、语言
+\end{itemize}
+
+\subsection{FPGA OpenAI-Style API}
+
+\section{开发计划表}
+\begin{itemize}
+    \item 未来会继续向现有的工具链中添加新的功能
+    \item 除了在各个环节加入新的功能外，还将额外开发Cli命令行工具以便在服务器终端操作调用
+    \item 苏灿同学会同时参与量化部分的llmc开发
+\end{itemize}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=.64\textwidth]{./figures/Development Schedule.png}
+    \caption{开发计划表}
+\end{figure}
+
+\end{document}

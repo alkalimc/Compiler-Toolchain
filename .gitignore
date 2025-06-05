@@ -6,3 +6,9 @@
 **/lock
 *.lock
 **/temp
+
+*.aux
+*.bcf
+*.out
+*.run.xml
+*.synctex.gz
