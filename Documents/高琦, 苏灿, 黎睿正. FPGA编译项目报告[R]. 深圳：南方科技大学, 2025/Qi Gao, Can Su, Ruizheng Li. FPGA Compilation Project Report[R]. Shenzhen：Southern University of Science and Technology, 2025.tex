@@ -85,7 +85,7 @@
             \caption{WebUI}
         \end{figure}
         \begin{lstlisting}[language=HTML]
-        //工具选项设置代码
+    //工具选项设置代码
     data() {
         return {
           activeSections: ['model', 'quant', 'target', 'eval', 'task'],
@@ -249,19 +249,19 @@
 
             if (hasError) {
               clearInterval(interval);
-              this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 评分失败，请检查日志`);
+              this.deployStatus.push(`${target === 'origin' ? '原模型' : '量化模型'} 评分失败，请检查日志`);
               return;
             }
 
             if (!response.data.is_running && !hasCompleted) {
               clearInterval(interval);
-              this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 评分中断但未检测到“完成”关键词，可能失败`);
+              this.deployStatus.push(`${target === 'origin' ? '原模型' : '量化模型'} 评分中断但未检测到“完成”关键词，可能失败`);
               return;
             }
 
             if (hasCompleted) {
               clearInterval(interval);
-              this.deployStatus.push(`✅ ${target === 'origin' ? '原模型' : '量化模型'} 评分完成`);
+              this.deployStatus.push(`${target === 'origin' ? '原模型' : '量化模型'} 评分完成`);
             }
           }
         } catch (error) {
@@ -272,17 +272,17 @@
 
           if (isIgnorable) {
             failCount++;
-            console.warn(`⚠️ 评分轮询失败（可忽略）: ${errMsg}，当前失败次数: ${failCount}`);
+            console.warn(`评分轮询失败（可忽略）: ${errMsg}，当前失败次数: ${failCount}`);
 
             if (failCount >= MAX_FAILS) {
               clearInterval(interval);
-              this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 连续多次无法获取评分进度，任务可能失败`);
+              this.deployStatus.push(`${target === 'origin' ? '原模型' : '量化模型'} 连续多次无法获取评分进度，任务可能失败`);
               this.$message.error('评分进度查询连续失败，已中止');
             }
             return;
           }
           clearInterval(interval);
-          this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 评分进度获取失败: ${errMsg}`);
+          this.deployStatus.push(`${target === 'origin' ? '原模型' : '量化模型'} 评分进度获取失败: ${errMsg}`);
           this.$message.error('评分进度查询失败');
         }
       }, 3000);
@@ -312,7 +312,7 @@
         });
 
         if (response.data.success) {
-          this.deployStatus.push(`✅ ${target === 'origin' ? '原模型' : '量化模型'} 评分任务已启动`);
+          this.deployStatus.push(`${target === 'origin' ? '原模型' : '量化模型'} 评分任务已启动`);
           this.startEvaluationPolling(target);
         } else {
           throw new Error(response.data.message || '评分启动失败');
@@ -320,7 +320,7 @@
       } catch (error) {
         console.error(`评分启动失败 (${target})`, error);
         const errorMsg = error.response?.data?.message || error.message;
-        this.deployStatus.push(`❌ ${target === 'origin' ? '原模型' : '量化模型'} 评分启动失败: ${error.message}`);
+        this.deployStatus.push(`${target === 'origin' ? '原模型' : '量化模型'} 评分启动失败: ${error.message}`);
       }
     },
     \end{lstlisting}
@@ -345,12 +345,12 @@
           });
 
           if (quantCancelResp.data.success) {
-            this.deployStatus.push('✅ 已成功取消量化进程');
+            this.deployStatus.push('已成功取消量化进程');
           } else {
-            this.deployStatus.push('⚠️ 取消量化失败: ' + quantCancelResp.data.message);
+            this.deployStatus.push('取消量化失败: ' + quantCancelResp.data.message);
           }
         } catch (e) {
-          this.deployStatus.push('⚠️ 取消量化时发生异常: ' + (e.message));
+          this.deployStatus.push('取消量化时发生异常: ' + (e.message));
         }
 
         try {
@@ -361,12 +361,12 @@
           });
 
           if (cancelResp.data.success) {
-            this.deployStatus.push(`✅ 已取消评分进程`);
+            this.deployStatus.push(`已取消评分进程`);
           } else {
-            this.deployStatus.push(`⚠️ 无法取消评分: ${cancelResp.data.message}`);
+            this.deployStatus.push(`无法取消评分: ${cancelResp.data.message}`);
           }
         } catch (error) {
-          this.deployStatus.push(`⚠️ 取消评分失败: ${error.message}`);
+          this.deployStatus.push(`取消评分失败: ${error.message}`);
         }
 
         try {
@@ -377,15 +377,15 @@
           });
 
           if (cancelResp.data.success) {
-            this.deployStatus.push(`✅ 已取消部署进程`);
+            this.deployStatus.push(`已取消部署进程`);
             this.$message.success('部署进程已成功取消');
           } else {
-            this.deployStatus.push(`⚠️ 无法取消部署: ${cancelResp.data.message}`);
+            this.deployStatus.push(`无法取消部署: ${cancelResp.data.message}`);
             this.$message.warning(cancelResp.data.message || '无法取消部署进程');
           }
         } catch (error) {
           const errMsg = error?.response?.data?.message || error.message;
-          this.deployStatus.push(`⚠️ 取消部署失败: ${errMsg}`);
+          this.deployStatus.push(`取消部署失败: ${errMsg}`);
           this.$message.error('取消部署失败');
         }
 
@@ -397,12 +397,12 @@
           });
 
           if (cancelResp.data.success) {
-            this.deployStatus.push(`✅ 已取消编译进程`);
+            this.deployStatus.push(`已取消编译进程`);
           } else {
-            this.deployStatus.push(`⚠️ 无法取消编译: ${cancelResp.data.message}`);
+            this.deployStatus.push(`无法取消编译: ${cancelResp.data.message}`);
           }
         } catch (error) {
-          this.deployStatus.push(`⚠️ 取消编译失败: ${error.message}`);
+          this.deployStatus.push(`取消编译失败: ${error.message}`);
         }
 
         this.isDeploying = false;
@@ -411,7 +411,7 @@
       } catch (error) {
         console.error('取消部署失败:', error);
         const errorMsg = error.response?.data?.message || error.message;
-        this.deployStatus.push(`⚠️ 取消失败: ${errorMsg}`);
+        this.deployStatus.push(`取消失败: ${errorMsg}`);
         this.$message.error(`取消失败: ${errorMsg}`);
       } finally {
         this.isDeploying = false;
@@ -476,7 +476,7 @@
         });
 
         if (response.data.success) {
-          this.deployStatus.push(`✅ 模型 ${model.label} 部署任务已启动`);
+          this.deployStatus.push(`模型 ${model.label} 部署任务已启动`);
           this.startDeploymentPolling();
         } else {
           throw new Error(response.data.message || '部署启动失败');
@@ -484,7 +484,7 @@
       } catch (error) {
         console.error('部署启动失败', error);
         const errorMsg = error.response?.data?.message || error.message;
-        this.deployStatus.push(`❌ 模型 ${model.label} 部署启动失败: ${errorMsg}`);
+        this.deployStatus.push(`模型 ${model.label} 部署启动失败: ${errorMsg}`);
       }
     },
     \end{lstlisting}
