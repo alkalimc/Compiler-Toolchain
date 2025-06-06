@@ -715,6 +715,336 @@
     \end{itemize}   
     
 \subsection{FPGA OpenAI-Style API}
+\begin{itemize}
+    \item OpenAI-Style API提供了快捷的与FPGA部署模型对话的工具,在前端openwebui或是agent直接通过OpenAI api chat/completion端口均可拉起工具
+        \item openwebui界面展示
+            \begin{figure}[H]
+                \centering
+                \includegraphics[width=\textwidth]{./figures/openwebui_display.png}
+                \caption{FPGA模型对话界面展示}
+            \end{figure}
+        \item socket实现与上位机的通信，在指定端口发送和接收消息
+        \begin{lstlisting}[language=python]
+        class FPGAConnection:
+        def __init__(self):
+            self.conn = None
+            self.shutdown_event = threading.Event()
+            self.lock = threading.Lock()
+
+        def connect(self):
+
+            while not self.shutdown_event.is_set():
+                try:
+                    print(f"[H100] 尝试连接上位机 {TCP_HOST}:{TCP_PORT}")
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(10)
+                    sock.connect((TCP_HOST, TCP_PORT))
+                    self.conn = sock
+                    print(f"[H100] 成功连接到上位机")
+                    return True
+                except Exception as e:
+                    print(f"[H100] 连接失败: {str(e)}")
+                    time.sleep(RECONNECT_DELAY)
+            return False
+
+        def send_message(self, message):
+
+            if self.conn is None:
+                raise ConnectionError("未连接到上位机")
+
+            try:
+                with self.lock:
+
+                    full_message = message + END_MARKER.decode('utf-8')
+                    encoded_msg = full_message.encode('utf-8')
+
+
+                    msg_length = len(encoded_msg)
+                    self.conn.sendall(struct.pack('>I', msg_length))
+
+
+                    self.conn.sendall(encoded_msg)
+                    print(f"[H100] 发送消息到上位机 (长度: {msg_length})")
+
+                    time.sleep(2)
+
+
+                    length_data = self.conn.recv(4)
+                    if not length_data:
+                        raise ConnectionError("连接已关闭")
+                    msg_length = struct.unpack('>I', length_data)[0]
+
+
+                    chunks = []
+                    bytes_received = 0
+                    while bytes_received < msg_length:
+                        chunk = self.conn.recv(min(msg_length - bytes_received, BUFFER_SIZE))
+                        if not chunk:
+                            raise ConnectionError("连接中断")
+                        chunks.append(chunk)
+                        bytes_received += len(chunk)
+
+                    full_message = b''.join(chunks).decode('utf-8')
+
+
+                    if full_message.endswith(END_MARKER.decode('utf-8')):
+                        full_message = full_message[:-len(END_MARKER)]
+
+                    print(f"[H100] 收到上位机响应 (长度: {len(full_message)})")
+                    return full_message
+
+            except Exception as e:
+                print(f"[H100] 通信错误: {str(e)}")
+                self.close()
+                raise
+
+        def close(self):
+            """关闭连接"""
+            if self.conn:
+                try:
+                    self.conn.close()
+                except:
+                    pass
+                self.conn = None
+            print("[H100] 连接已关闭")
+        \end{lstlisting}
+        \item FPGA回传消息通过转化层处理为标准OpenAI api格式，可供agent直接读取
+        \begin{lstlisting}[language=python]
+        def process_requests():
+        global fpga_connection  
+
+        while True:
+            try:
+                queue_item = request_queue.get()
+
+                if len(queue_item) == 2:
+                    _, data = queue_item
+                    response_callback = None  
+                elif len(queue_item) == 3:
+                    _, data, response_callback = queue_item
+                else:
+                    print(f"[H100] 错误：无效的队列项格式: {queue_item}")
+                    continue
+
+
+                with connection_lock:
+                    if fpga_connection is None or fpga_connection.conn is None:
+                        print("[H100] 错误：未连接上位机")
+                        continue
+
+
+                try:
+                    with connection_lock:
+                        current_conn = fpga_connection
+
+                    send_data = {
+                        "model": data.get("model"),
+                        "messages": data.get("messages"),
+                        "temperature": data.get("temperature"),
+                        "max_tokens": data.get("max_tokens")
+                    }
+
+                    response = current_conn.send_message(json.dumps(send_data))
+
+
+                    openai_response = {
+                        "id": f"chatcmpl-{int(time.time())}",
+                        "object": "chat.completion",
+                        "created": int(time.time()),
+                        "model": openai_model,
+                        "choices": [{
+                            "message": {
+                                "role": "assistant",
+                                "content": response
+                            },
+                            "finish_reason": "stop",
+                            "index": 0
+                        }]
+                    }
+
+
+                    if response_callback:
+                        response_callback(openai_response)
+
+                except Exception as e:
+                    print(f"[H100] 处理请求失败: {str(e)}")
+
+                    with connection_lock:
+                        if fpga_connection:
+                            fpga_connection.close()
+                            fpga_connection = None
+
+            except Exception as e:
+                print(f"[H100] 请求处理错误: {str(e)}")
+                time.sleep(1)
+        \end{lstlisting}
+        \item 与agent或网页进行收发消息交互
+        \begin{lstlisting}[language=python]
+        def openai_endpoint():
+
+        try:
+
+            with connection_lock:
+                if fpga_connection is None or fpga_connection.conn is None:
+                    return jsonify({"error": "未连接上位机"}), 503
+
+
+            request_data = request.json
+            print(f"[H100] 收到Agent请求: {json.dumps(request_data, indent=2)}")
+
+            response_event = threading.Event()
+            response_data = [None]
+
+            def response_callback(resp):
+                response_data[0] = resp
+                response_event.set()
+
+            processing_data = {
+                "messages": request_data['messages'],
+                "model": request_data.get('model', 'glm'),
+                "max_tokens": request_data.get('max_tokens', 1024),
+                "temperature": request_data.get('temperature', 0.7),
+                "response_callback": response_callback
+            }
+
+            request_queue.put((1, request_data, response_callback))
+            print("发送给agent回复")
+            #request_queue.put(("fpga", processing_data))
+            response_event.wait(timeout=60)
+
+            if response_data[0] is None:
+                return jsonify({"error": "处理超时"}), 504
+
+            return jsonify(response_data[0])
+
+        except Exception as e:
+            print(f"[H100] API错误: {str(e)}")
+            return jsonify({"error": "服务器错误"}), 500
+        \end{lstlisting}
+        \item 上位机监听服务器发送的消息，编译成FPGA可读的形式传给FPGA
+        \begin{lstlisting}
+        def other_server_communication():
+            global other_server_socket
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server_socket.bind(("0.0.0.0", OTHER_SERVER_PORT))  # 监听所有接口
+            server_socket.listen(1)
+            print(f"上位机已在端口 {OTHER_SERVER_PORT} 监听H100连接...")
+            while True:
+                try:
+                    client_sock, addr = server_socket.accept()
+                    print(f"接受来自H100的连接: {addr}")
+                    other_server_socket = client_sock
+                    while True:
+
+                        length_data = other_server_socket.recv(4)
+                        if not length_data:
+                            raise ConnectionError("连接已关闭")
+
+                            # 解析消息长度
+                        msg_length = struct.unpack('>I', length_data)[0]
+
+                        chunks = []
+                        bytes_received = 0
+                        while bytes_received < msg_length:
+                            chunk = other_server_socket.recv(min(msg_length - bytes_received, 4096))
+                            if not chunk:
+                                raise ConnectionError("连接中断")
+                            chunks.append(chunk)
+                            bytes_received += len(chunk)
+
+                        full_message = b''.join(chunks).decode('utf-8')
+
+                        if full_message.endswith(END_MARKER.decode('utf-8')):
+                            full_message = full_message[:-len(END_MARKER)]
+
+                        message_queue.put(full_message)
+                        print(f"收到完整服务器消息 (长度: {msg_length}): {full_message[:50]}...")
+
+                except (ConnectionError, socket.error) as e:
+                    print(f"服务器连接错误: {str(e)}")
+                    if other_server_socket:
+                        other_server_socket.close()
+                        other_server_socket = None
+                    time.sleep(5)  # 等待后重连
+
+                except Exception as e:
+                    print(f"处理服务器消息出错: {str(e)}")
+                    if other_server_socket:
+                        other_server_socket.close()
+                        other_server_socket = None
+                    time.sleep(1)
+
+        def main_kvcache_show(tokenizer, client, memory=0):
+            global other_server_socket
+
+            server_thread = threading.Thread(target=other_server_communication, daemon=True)
+            server_thread.start()
+
+            round = 1
+            while True:
+
+                query, is_server_message = collect_input()
+
+                if query is None:
+                    time.sleep(0.1)
+                    continue
+
+                try:
+
+                    data = json.loads(query)
+
+                    user_messages = [msg for msg in data.get("messages", [])
+                                     if msg.get("role") == "user"]
+
+                    if user_messages:
+
+                        actual_query = user_messages[-1]["content"]
+                    else:
+
+                        system_messages = [msg for msg in data.get("messages", [])
+                                           if msg.get("role") == "system"]
+                        actual_query = system_messages[0]["content"] if system_messages else "没有提供查询内容"
+
+
+                    temperature = data.get("temperature", [])
+                    max_tokens = data.get("max_tokens", [])
+
+                    print(f"解析后的查询内容: {actual_query}")
+                    print(f"参数: temperature={temperature}, max_tokens={max_tokens}")
+
+                except json.JSONDecodeError:
+                    print("无法解析JSON，使用原始输入")
+                    actual_query = query
+                except Exception as e:
+                    print(f"解析输入时出错: {str(e)}")
+                    actual_query = query
+
+                prompt = "[Round {}]\n\n问：{}\n\n答：".format(round, actual_query)
+                print(f"构造的prompt: {prompt[:100]}...")
+                inputs = tokenizer([prompt], return_tensors="pt")
+
+                print("FPGA: ", end="")
+                run_model_kvcache_show(client, inputs["input_ids"], inputs["input_ids"].shape[1], 0, memory)
+
+                full_response = ""
+                while True:
+                    state, ids_len, ids = get_next_ids(client)
+                    if state == 0:
+                        print("")
+                        main_time_show(client)
+
+                        if other_server_socket:
+                            send_to_other_server(full_response)
+                        break
+
+                    generated_text = tokenizer.decode(ids)
+                    print(generated_text, end="", flush=True)
+                    full_response += generated_text
+
+                round += memory
+        \end{lstlisting}
+\end{itemize}
 
 \section{开发计划表}
 \begin{itemize}
