@@ -63,20 +63,26 @@
 前端WebUI主要支持用户进行一键式操作，为大模型上板做好准备工作，提供用户登录、各项部署细节选择、取消进程、实时日志查看服务。
 \begin{itemize}
     \item 网页界面展示
-        \begin{figure}[H]
+        \begin{figure}[htb]
             \centering
-            \includegraphics[width=.64\textwidth]{./figures/login_display.png}
-            \caption{用户登录界面展示}
-        \end{figure}
-        \begin{figure}[H]
-            \centering
-            \includegraphics[width=.64\textwidth]{./figures/log_display.png}
-            \caption{日志界面展示}
-        \end{figure}
-        \begin{figure}[H]
-            \centering
-            \includegraphics[width=.64\textwidth]{./figures/deploymenttool_display.png}
-            \caption{部署工具界面展示}
+            \begin{subfigure}[t]{.3\textwidth}
+                \centering
+                \includegraphics[width=\textwidth]{./figures/login_display.png}
+                \caption{用户登录界面展示}
+            \end{subfigure}
+            \hfill
+            \begin{subfigure}[t]{.48\textwidth}
+                \centering
+                \includegraphics[width=\textwidth]{./figures/log_display.png}
+                \caption{日志界面展示}
+            \end{subfigure}
+            \hfill
+            \begin{subfigure}[t]{.2\textwidth}
+                \centering
+                \includegraphics[width=\textwidth]{./figures/deploymenttool_display.png}
+                \caption{部署工具界面展示}
+            \end{subfigure}
+            \caption{WebUI}
         \end{figure}
         \begin{lstlisting}[language=HTML]
         //工具选项设置代码
@@ -718,7 +724,7 @@
 \end{itemize}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=.64\textwidth]{./figures/Development Schedule.png}
+    \includegraphics[width=\textwidth]{./figures/Development Schedule.png}
     \caption{开发计划表}
 \end{figure}
 
